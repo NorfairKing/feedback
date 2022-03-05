@@ -11,8 +11,17 @@ data State = State
   { stateCommand :: [String],
     stateCurrentProcess :: !(Maybe ExitCode),
     stateEvents :: [FS.Event],
-    stateOutput :: !(NonEmptyCursor ByteString)
+    stateOutput :: !Output
   }
+
+newtype Output = Output {unOutput :: Map Word64 (OutputStream, ByteString)}
+  deriving (Show)
+
+data OutputStream = Stdout | Stderr
+  deriving (Show)
+
+emptyOutput :: Output
+emptyOutput = Output M.empty
 
 addOutput :: OutputStream -> Word64 -> ByteString -> Output -> Output
 addOutput os u bs (Output m) = Output $ M.insert u (os, bs) m

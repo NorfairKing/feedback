@@ -17,6 +17,8 @@ library:
   - autodocodec-yaml
   - brick
   - bytestring
+  - conduit
+  - conduit-extra
   - conduit-extra
   - containers
   - cursor

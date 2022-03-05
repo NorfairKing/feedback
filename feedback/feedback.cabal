@@ -39,6 +39,7 @@ library
     , base >=4.7 && <5
     , brick
     , bytestring
+    , conduit
     , conduit-extra
     , containers
     , cursor

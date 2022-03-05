@@ -1,6 +1,7 @@
 module Feedback.TUI.Env where
 
 import Brick.BChan
+import Conduit
 import Control.Monad.Reader
 import Data.ByteString
 import System.Exit
@@ -17,10 +18,16 @@ data Env = Env
 
 data ProcessHandle = ProcessHandle
   { processHandleProcess :: !P,
-    processHandleWaiter :: Async ()
+    processHandleWaiter :: Async (),
+    processHandleStdoutReader :: Async (),
+    processHandleStderrReader :: Async ()
   }
 
-type P = Typed.Process () Handle Handle
+type P =
+  Typed.Process
+    ()
+    (ConduitT () ByteString W ())
+    (ConduitT () ByteString W ())
 
 type W = ReaderT Env IO
 
