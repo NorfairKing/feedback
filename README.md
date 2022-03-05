@@ -26,3 +26,4 @@ TODO
 * No-nonsense interface to call the program, no no short-hand flags.
 * Named feedback loops via a configuration file
 * Optionally gitignore-aware
+* Ideally pipes still work in the loop, so we can do `feedback "nix-build | cachix push mycache"`.

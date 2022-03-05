@@ -17,6 +17,8 @@ drawTui State {..} =
   [ vBox
       [ str $ show stateCommand,
         hBorder,
+        str $ show stateCurrentProcess,
+        hBorder,
         vBox $ map (str . show) stateEvents
       ]
   ]

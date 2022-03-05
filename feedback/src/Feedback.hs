@@ -17,6 +17,7 @@ runFeedbackMain = do
   Settings {..} <- getSettings
   requestChan <- newBChan 1000
   here <- getCurrentDir
+  -- 0.1 second debouncing, 0.001 was too little
   let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
   FS.withManagerConf conf $ \watchManager -> do
     stopListeningAction <-

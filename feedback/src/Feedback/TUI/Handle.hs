@@ -17,4 +17,6 @@ handleTuiEvent _requestChan s e =
         _ -> continue s
     AppEvent resp -> case resp of
       ReceivedEvent fsEvent -> continue $ s {stateEvents = fsEvent : stateEvents s}
+      ProcessStarted -> continue $ s {stateCurrentProcess = Nothing}
+      ProcessExited ec -> continue $ s {stateCurrentProcess = Just ec}
     _ -> continue s

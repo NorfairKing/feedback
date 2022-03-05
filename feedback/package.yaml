@@ -26,6 +26,7 @@ library:
   - path-io
   - text
   - typed-process
+  - unliftio
   - vty
   - yaml
 

@@ -48,6 +48,7 @@ library
     , path-io
     , text
     , typed-process
+    , unliftio
     , vty
     , yaml
   default-language: Haskell2010
