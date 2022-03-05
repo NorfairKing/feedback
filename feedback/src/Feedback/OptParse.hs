@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
@@ -9,6 +10,7 @@ module Feedback.OptParse where
 import Autodocodec
 import Autodocodec.Yaml
 import Control.Applicative
+import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Yaml (FromJSON, ToJSON)
@@ -27,18 +29,30 @@ getSettings = do
   combineToSettings flags env config
 
 data Settings = Settings
-  { settingCommand :: ![String]
+  { settingCommand :: ![String],
+    settingOutputSettings :: !OutputSettings
+  }
+  deriving (Show, Eq, Generic)
+
+data OutputSettings = OutputSettings
+  { outputSettingClear :: !Clear
   }
   deriving (Show, Eq, Generic)
 
 -- | Combine everything to 'Settings'
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
-combineToSettings Flags {..} Environment {} _ = do
+combineToSettings Flags {..} Environment {} mConf = do
   let settingCommand = flagCommand
+  let settingOutputSettings = combineToOutputSettings (mConf >>= configOutputConfiguration)
   pure Settings {..}
 
+combineToOutputSettings :: Maybe OutputConfiguration -> OutputSettings
+combineToOutputSettings mConf =
+  let outputSettingClear = fromMaybe ClearScreen $ mConf >>= outputConfigClear
+   in OutputSettings {..}
+
 data Configuration = Configuration
-  {
+  { configOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec Configuration)
@@ -46,7 +60,20 @@ data Configuration = Configuration
 instance HasCodec Configuration where
   codec =
     object "Configuration" $
-      pure Configuration
+      Configuration
+        <$> optionalField' "output" .= configOutputConfiguration
+
+data OutputConfiguration = OutputConfiguration
+  { outputConfigClear :: !(Maybe Clear)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec OutputConfiguration)
+
+instance HasCodec OutputConfiguration where
+  codec =
+    object "OutputConfiguration" $
+      OutputConfiguration
+        <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
 
 getConfiguration :: Flags -> Environment -> IO (Maybe Configuration)
 getConfiguration Flags {..} Environment {..} =
@@ -101,10 +128,15 @@ flagsParser =
           T.unpack (TE.decodeUtf8 (renderColouredSchemaViaCodec @Configuration))
         ]
 
--- | The flags that are common across commands.
 data Flags = Flags
   { flagConfigFile :: !(Maybe FilePath),
-    flagCommand :: ![String]
+    flagCommand :: ![String],
+    flagOutputFlags :: !OutputFlags
+  }
+  deriving (Show, Eq, Generic)
+
+data OutputFlags = OutputFlags
+  { outputFlagClear :: !(Maybe Clear)
   }
   deriving (Show, Eq, Generic)
 
@@ -127,3 +159,38 @@ parseFlags =
               ]
           )
       )
+    <*> parseOutputFlags
+
+parseOutputFlags :: OptParse.Parser OutputFlags
+parseOutputFlags =
+  OutputFlags
+    <$> parseClearFlag
+
+data Clear = ClearScreen | DoNotClearScreen
+  deriving (Show, Eq, Generic)
+
+instance HasCodec Clear where
+  codec = dimapCodec f g codec
+    where
+      f True = ClearScreen
+      f False = DoNotClearScreen
+      g ClearScreen = True
+      g DoNotClearScreen = False
+
+parseClearFlag :: OptParse.Parser (Maybe Clear)
+parseClearFlag =
+  optional $
+    flag'
+      ClearScreen
+      ( mconcat
+          [ long "clear",
+            help "clear the screen between feedback"
+          ]
+      )
+      <|> flag'
+        DoNotClearScreen
+        ( mconcat
+            [ long "no-clear",
+              help "do not clear the screen between feedback"
+            ]
+        )

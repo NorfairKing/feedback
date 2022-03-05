@@ -37,7 +37,7 @@ runFeedbackMain = do
           writeChan eventChan event
     concurrently_
       (processWorker settingCommand eventChan outputChan)
-      (outputWorker outputChan)
+      (outputWorker settingOutputSettings outputChan)
     stopListeningAction
 
 eventFilter :: Path Abs Dir -> FS.Event -> Bool
@@ -118,8 +118,8 @@ data Output
   | OutputProcessExited !ExitCode
   deriving (Show)
 
-outputWorker :: Chan Output -> IO ()
-outputWorker outputChan = do
+outputWorker :: OutputSettings -> Chan Output -> IO ()
+outputWorker OutputSettings {..} outputChan = do
   terminalCapabilities <- getTerminalCapabilitiesFromEnv
   let put chunks = do
         now <- getCurrentTime
@@ -142,6 +142,9 @@ outputWorker outputChan = do
       OutputKilling -> put [fore cyan "killing"]
       OutputKilled -> put [fore cyan "killed"]
       OutputProcessStarted command -> do
+        case outputSettingClear of
+          ClearScreen -> putStrLn "\ESCc"
+          DoNotClearScreen -> pure ()
         let commandString = case command of
               [] -> ""
               (bin : args) -> showCommandForUser bin args
@@ -160,7 +163,7 @@ outputWorker outputChan = do
               ]
           ExitFailure c ->
             put
-              [ fore cyan "exited:  ",
+              [ fore cyan "exited: ",
                 " ",
                 fore red $ chunk $ T.pack $ "failed: " <> show c
               ]
