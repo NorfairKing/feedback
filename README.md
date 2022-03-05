@@ -1,5 +1,7 @@
 # Feedback loop
 
+A general purpose tool to set up good feedback loops and share them with your team.
+
 ## Example
 
 Working on nix code?
