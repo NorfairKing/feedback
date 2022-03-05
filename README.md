@@ -8,22 +8,30 @@ Working on nix code?
 feedback -- nix-build --no-out-link
 ```
 
-## Comparison with other tools
+## Features & Comparison with other tools
 
-TODO
+| | feedback | [steeloverseer](https://github.com/schell/steeloverseer) | [watchexec](https://github.com/watchexec/watchexec) | [entr](https://github.com/eradman/entr)
+|----|-|-|-|-|
+| Indication of command starting | ✔️ | ? | ? | C |
+| Indication of time | ✔️ | ? | ? | C |
+| Clear screen between feedback | ✔️ | ? | ? | C |
+| Gitignore-aware | 🚧 | ? | ? | ? |
+| Named configurable feedback loops | 🚧 | ? | ? | ? |
+| Cancelling previous runs that aren't done yet | ✔️ | ? | ? | ? |
+| Long-form flags for every option | ✔️ | ? | ? | ? |
 
-## Design ideas
+* ✔️: Supported
+* C: Possible but you have to write some code yourself
+* 🚧 — Under development
+* ✖️: Not supported
+* ?: I don't know.
 
-* General feedback loop system for arbitrary files and commands.
+## Someday/maybe ideas
+
 * I want to have a good idea of the current state of things:
-  * Is something running or not?
-  * How many runs are queued?
   * Is it blocking on CPU, on memory, on network?
-* Clear previous feedback next time.
-* Make it possible to queue feedback and cancel the previous one.
+* Manually activate a run
+* Manually cancel and re-activate a run
 * Low latency between change and rerun.
 * Cancelling failed feedback loops from before.
-* No-nonsense interface to call the program, no no short-hand flags.
-* Named feedback loops via a configuration file
-* Optionally gitignore-aware
 * Ideally pipes still work in the loop, so we can do `feedback "nix-build | cachix push mycache"`.
