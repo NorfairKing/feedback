@@ -44,8 +44,8 @@ startNewProcess :: W ProcessHandle
 startNewProcess = do
   command <- asks envCommand
   let processConfig =
-        setStdout closed
-          . setStderr closed
+        setStdout createPipe
+          . setStderr createPipe
           . setStdin inherit
           . shell
           $ unwords command
@@ -55,7 +55,7 @@ startNewProcess = do
   sendResponse ProcessStarted
   pure ProcessHandle {..}
 
-waiterThread :: Typed.Process () () () -> W ()
+waiterThread :: P -> W ()
 waiterThread process = do
   ec <- waitExitCode process
   sendResponse $ ProcessExited ec

@@ -16,6 +16,9 @@ library:
   - autodocodec
   - autodocodec-yaml
   - brick
+  - bytestring
+  - conduit-extra
+  - containers
   - cursor
   - cursor-brick
   - envparse
@@ -24,7 +27,9 @@ library:
   - optparse-applicative
   - path
   - path-io
+  - process
   - text
+  - time
   - typed-process
   - unliftio
   - vty

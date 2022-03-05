@@ -19,4 +19,6 @@ handleTuiEvent _requestChan s e =
       ReceivedEvent fsEvent -> continue $ s {stateEvents = fsEvent : stateEvents s}
       ProcessStarted -> continue $ s {stateCurrentProcess = Nothing}
       ProcessExited ec -> continue $ s {stateCurrentProcess = Just ec}
+      StdoutChunk _ -> continue s
+      StderrChunk _ -> continue s
     _ -> continue s

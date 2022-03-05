@@ -1,12 +1,12 @@
 module Feedback.TUI.Env where
 
 import Brick.BChan
-import Control.Concurrent
-import Control.Concurrent.Async
 import Control.Monad.Reader
+import Data.ByteString
 import System.Exit
 import System.FSNotify as FS
 import System.Process.Typed as Typed
+import UnliftIO
 
 data Env = Env
   { envCommand :: ![String],
@@ -16,9 +16,11 @@ data Env = Env
   }
 
 data ProcessHandle = ProcessHandle
-  { processHandleProcess :: !(Typed.Process () () ()),
+  { processHandleProcess :: !P,
     processHandleWaiter :: Async ()
   }
+
+type P = Typed.Process () Handle Handle
 
 type W = ReaderT Env IO
 
@@ -28,3 +30,5 @@ data Response
   = ReceivedEvent !FS.Event
   | ProcessStarted
   | ProcessExited !ExitCode
+  | StdoutChunk !ByteString
+  | StderrChunk !ByteString

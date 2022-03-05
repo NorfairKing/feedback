@@ -48,4 +48,5 @@ buildInitialState :: [String] -> IO State
 buildInitialState stateCommand = do
   let stateEvents = []
   let stateCurrentProcess = Nothing
+  let stateOutput = mempty
   pure State {..}

@@ -38,6 +38,9 @@ library
     , autodocodec-yaml
     , base >=4.7 && <5
     , brick
+    , bytestring
+    , conduit-extra
+    , containers
     , cursor
     , cursor-brick
     , envparse
@@ -46,7 +49,9 @@ library
     , optparse-applicative
     , path
     , path-io
+    , process
     , text
+    , time
     , typed-process
     , unliftio
     , vty
