@@ -1,21 +1,29 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Feedback where
 
-import Brick.BChan
+import Control.Monad
 import Data.List
+import qualified Data.Text as T
+import Data.Time
 import Feedback.OptParse
-import Feedback.TUI
-import Feedback.TUI.Env
 import Path
 import Path.IO
+import System.Exit
 import System.FSNotify as FS
+import System.Process (showCommandForUser)
+import System.Process.Typed as Typed
+import Text.Colour
+import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
+import UnliftIO
 
 runFeedbackMain :: IO ()
 runFeedbackMain = do
   Settings {..} <- getSettings
-  requestChan <- newBChan 1000
+  eventChan <- newChan
+  outputChan <- newChan
   here <- getCurrentDir
   -- 0.1 second debouncing, 0.001 was too little
   let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
@@ -26,8 +34,10 @@ runFeedbackMain = do
         (fromAbsDir here) -- Where to watch
         (eventFilter here)
         $ \event -> do
-          writeBChan requestChan $ ReceiveEvent event
-    feedbackTUI settingCommand requestChan
+          writeChan eventChan event
+    concurrently_
+      (processWorker settingCommand eventChan outputChan)
+      (outputWorker outputChan)
     stopListeningAction
 
 eventFilter :: Path Abs Dir -> FS.Event -> Bool
@@ -59,3 +69,98 @@ isHiddenIn curdir ad =
   case stripProperPrefix curdir ad of
     Nothing -> False
     Just rp -> "." `isPrefixOf` toFilePath rp
+
+processWorker :: [String] -> Chan FS.Event -> Chan Output -> IO ()
+processWorker command eventChan outputChan = do
+  let sendOutput = writeChan outputChan
+  currentProcessVar <- newEmptyMVar
+  let startNewProcess = do
+        -- Start a new process
+        let processConfig =
+              setStdout inherit
+                . setStderr inherit
+                . setStdin closed -- TODO make this configurable?
+                . shell
+                $ unwords command
+        processHandleProcess <- startProcess processConfig
+        processHandleWaiter <- async $ do
+          ec <- waitExitCode processHandleProcess
+          sendOutput $ OutputProcessExited ec
+        putMVar currentProcessVar ProcessHandle {..}
+        sendOutput $ OutputProcessStarted command
+  -- Start one process ahead of time
+  startNewProcess
+  forever $ do
+    -- Output the event that made the rerun happen
+    event <- readChan eventChan
+    sendOutput $ OutputEvent event
+    -- Kill the current process
+    mCurrentProcess <- tryTakeMVar currentProcessVar
+    forM_ mCurrentProcess $ \currentProcess -> do
+      sendOutput OutputKilling
+      stopProcess $ processHandleProcess currentProcess
+      -- No need to cancel the waiter thread.
+      sendOutput OutputKilled
+    startNewProcess
+
+data ProcessHandle = ProcessHandle
+  { processHandleProcess :: !P,
+    processHandleWaiter :: Async ()
+  }
+
+type P = Process () () ()
+
+data Output
+  = OutputEvent !FS.Event
+  | OutputKilling
+  | OutputKilled
+  | OutputProcessStarted ![String]
+  | OutputProcessExited !ExitCode
+  deriving (Show)
+
+outputWorker :: Chan Output -> IO ()
+outputWorker outputChan = do
+  terminalCapabilities <- getTerminalCapabilitiesFromEnv
+  let put chunks = do
+        now <- getCurrentTime
+        let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
+        putChunksWith terminalCapabilities $ timeChunk : " " : chunks
+        putStrLn ""
+  forever $ do
+    event <- readChan outputChan
+    case event of
+      OutputEvent fsEvent -> do
+        put
+          [ fore cyan "event:   ",
+            case fsEvent of
+              Added {} -> fore green "added    "
+              Modified {} -> fore yellow "modified "
+              Removed {} -> fore red "removed  "
+              Unknown {} -> "unknown  ",
+            chunk $ T.pack $ eventPath fsEvent
+          ]
+      OutputKilling -> put [fore cyan "killing"]
+      OutputKilled -> put [fore cyan "killed"]
+      OutputProcessStarted command -> do
+        let commandString = case command of
+              [] -> ""
+              (bin : args) -> showCommandForUser bin args
+        put
+          [ fore cyan "started:",
+            " ",
+            fore blue $ chunk $ T.pack commandString
+          ]
+      OutputProcessExited ec ->
+        case ec of
+          ExitSuccess ->
+            put
+              [ fore cyan "exited: ",
+                " ",
+                fore green "success"
+              ]
+          ExitFailure c ->
+            put
+              [ fore cyan "exited:  ",
+                " ",
+                fore red $ chunk $ T.pack $ "failed: " <> show c
+              ]

@@ -5,7 +5,7 @@
 Working on nix code?
 
 ```
-feedback nix-build
+feedback -- nix-build --no-out-link
 ```
 
 ## Comparison with other tools

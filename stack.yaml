@@ -4,6 +4,11 @@ packages:
 - feedback
 
 extra-deps:
+- github: NorfairKing/safe-coloured-text
+  commit: f30fe0e4d2a0fa036967ffe17538b60e5f9861f5
+  subdirs:
+    - safe-coloured-text
+    - safe-coloured-text-terminfo
 - github: NorfairKing/autodocodec
   commit: 9880ec062f1166bdac50b8eb59c6dd010bc9af0c
   subdirs:
