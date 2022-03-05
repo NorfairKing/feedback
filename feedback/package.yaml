@@ -12,7 +12,22 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
+  - async
+  - autodocodec
+  - autodocodec-yaml
+  - brick
+  - cursor
+  - cursor-brick
+  - envparse
   - fsnotify
+  - mtl
+  - optparse-applicative
+  - path
+  - path-io
+  - text
+  - typed-process
+  - vty
+  - yaml
 
 executables:
   feedback:

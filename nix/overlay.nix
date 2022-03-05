@@ -50,7 +50,7 @@ in
     in
     {
 
-      "feedback" = feedbackPkg "feedback";
+      "feedback" = feedbackPkgWithOwnComp "feedback";
     };
 
   feedbackReleasePackages = mapAttrs

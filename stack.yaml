@@ -1,3 +1,11 @@
 resolver: lts-18.16
 packages:
 - feedback
+extra-deps:
+
+- github: NorfairKing/autodocodec
+  commit: 9880ec062f1166bdac50b8eb59c6dd010bc9af0c
+  subdirs:
+    - autodocodec
+    - autodocodec-schema
+    - autodocodec-yaml

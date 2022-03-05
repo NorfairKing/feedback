@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Feedback
 
 main :: IO ()
-main = someFunc
+main = runFeedbackMain

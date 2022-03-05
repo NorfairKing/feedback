@@ -20,17 +20,39 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Feedback
+      Feedback.OptParse
+      Feedback.TUI
+      Feedback.TUI.Draw
+      Feedback.TUI.Env
+      Feedback.TUI.Handle
+      Feedback.TUI.State
+      Feedback.TUI.Worker
   other-modules:
       Paths_feedback
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      async
+    , autodocodec
+    , autodocodec-yaml
+    , base >=4.7 && <5
+    , brick
+    , cursor
+    , cursor-brick
+    , envparse
     , fsnotify
+    , mtl
+    , optparse-applicative
+    , path
+    , path-io
+    , text
+    , typed-process
+    , vty
+    , yaml
   default-language: Haskell2010
 
-executable feedback-exe
+executable feedback
   main-is: Main.hs
   other-modules:
       Paths_feedback

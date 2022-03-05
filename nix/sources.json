@@ -1,4 +1,16 @@
 {
+    "autodocodec": {
+        "branch": "master",
+        "description": "self(auto)- documenting encoders and decoders",
+        "homepage": "",
+        "owner": "NorfairKing",
+        "repo": "autodocodec",
+        "rev": "9880ec062f1166bdac50b8eb59c6dd010bc9af0c",
+        "sha256": "1i4wq6rqdw40x1i4xy4qia6nzwrq4xpj1h805qg4i4svm6ggcmpw",
+        "type": "tarball",
+        "url": "https://github.com/NorfairKing/autodocodec/archive/9880ec062f1166bdac50b8eb59c6dd010bc9af0c.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "gitignore": {
         "branch": "master",
         "description": "Nix functions for filtering local git sources",
