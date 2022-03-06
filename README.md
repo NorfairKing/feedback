@@ -22,6 +22,7 @@ feedback -- nix-build --no-out-link
 | Configurable feedback loops | ✔️ | ✔️ | ✖ | ✖ |
 | Cancelling previous runs that aren't done yet | ✔️ | ✔️ | ✔️ | ✖ |
 | Long-form flags for every option | ✔️ | ✔️ | ✔️ | ✖ |
+| CI integration | ✔️ | C | C | C |
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself

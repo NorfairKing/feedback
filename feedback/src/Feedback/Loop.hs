@@ -8,7 +8,8 @@ import Control.Monad
 import Data.List
 import qualified Data.Text as T
 import Data.Time
-import Feedback.OptParse
+import Feedback.Common.OptParse
+import Feedback.Loop.OptParse
 import Path
 import Path.IO
 import System.Exit

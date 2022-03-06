@@ -6,12 +6,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
-module Feedback.OptParse where
+module Feedback.Common.OptParse where
 
 import Autodocodec
 import Autodocodec.Yaml
 import Control.Applicative
-import Control.Monad
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
@@ -24,53 +23,11 @@ import Options.Applicative as OptParse
 import qualified Options.Applicative.Help as OptParse (string)
 import Path
 import Path.IO
-import Text.Show.Pretty (pPrint)
-
-getSettings :: IO Settings
-getSettings = do
-  flags <- getFlags
-  env <- getEnvironment
-  config <- getConfiguration flags env
-  combineToSettings flags env config
-
-data Settings = Settings
-  { settingCommand :: !String,
-    settingOutputSettings :: !OutputSettings
-  }
-  deriving (Show, Eq, Generic)
 
 data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
   }
   deriving (Show, Eq, Generic)
-
--- | Combine everything to 'Settings'
-combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
-combineToSettings Flags {..} Environment {} mConf = do
-  let loops = maybe M.empty configLoops mConf
-  let defaultOutputConfig = mConf >>= configOutputConfiguration
-  (settingCommand, outputConfig) <- case M.lookup flagCommand loops of
-    Nothing -> do
-      when (not (null loops)) $
-        putStrLn $
-          unwords
-            [ "No loop found with name",
-              show flagCommand <> ",",
-              "interpreting it as a standalone command"
-            ]
-      pure (flagCommand, defaultOutputConfig)
-    Just LoopConfiguration {..} -> do
-      putStrLn $
-        unwords
-          [ "Interpreting",
-            show flagCommand,
-            "as the name of a configured loop"
-          ]
-      pure (loopConfigCommand, liftA2 (<>) loopConfigOutputConfiguration defaultOutputConfig)
-  let settingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
-  let settings = Settings {..}
-  when flagDebug $ pPrint settings
-  pure settings
 
 combineToOutputSettings :: OutputFlags -> Maybe OutputConfiguration -> OutputSettings
 combineToOutputSettings OutputFlags {..} mConf =

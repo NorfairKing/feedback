@@ -20,8 +20,9 @@ source-repository head
 
 library
   exposed-modules:
+      Feedback.Common.OptParse
       Feedback.Loop
-      Feedback.OptParse
+      Feedback.Loop.OptParse
       Feedback.Test
   other-modules:
       Paths_feedback
