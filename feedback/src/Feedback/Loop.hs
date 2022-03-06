@@ -7,10 +7,12 @@ module Feedback.Loop where
 import Control.Monad
 import Data.List
 import qualified Data.Text as T
+import Data.Word
 import Feedback.Common.OptParse
 import Feedback.Common.Output
 import Feedback.Common.Process
 import Feedback.Loop.OptParse
+import GHC.Clock (getMonotonicTimeNSec)
 import Path
 import Path.IO
 import System.Exit
@@ -75,9 +77,13 @@ processWorker command eventChan outputChan = do
   let sendOutput = writeChan outputChan
   currentProcessVar <- newEmptyMVar
   let startNewProcess = do
+        start <- getMonotonicTimeNSec
+        let endFunc ec = do
+              end <- getMonotonicTimeNSec
+              sendOutput $ OutputProcessExited ec (end - start)
         processHandle <-
           startProcessHandle
-            (sendOutput . OutputProcessExited)
+            endFunc
             command
         putMVar currentProcessVar processHandle
         sendOutput $ OutputProcessStarted command
@@ -100,7 +106,7 @@ data Output
   | OutputKilling
   | OutputKilled
   | OutputProcessStarted !String
-  | OutputProcessExited !ExitCode
+  | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
 outputWorker :: OutputSettings -> Chan Output -> IO ()
@@ -131,4 +137,6 @@ outputWorker OutputSettings {..} outputChan = do
             " ",
             commandChunk command
           ]
-      OutputProcessExited ec -> put $ exitCodeChunks ec
+      OutputProcessExited ec nanosecs -> do
+        put $ exitCodeChunks ec
+        put $ durationChunks nanosecs

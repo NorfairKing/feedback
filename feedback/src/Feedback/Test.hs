@@ -9,6 +9,7 @@ import Feedback.Common.OptParse
 import Feedback.Common.Output
 import Feedback.Common.Process
 import Feedback.Test.OptParse
+import GHC.Clock (getMonotonicTimeNSec)
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 
 runFeedbackTest :: IO ()
@@ -19,5 +20,9 @@ runFeedbackTest = do
   forM_ (M.toList testSettingLoops) $ \(loopName, LoopSettings {..}) -> do
     put [indicatorChunk "testing ", " ", loopNameChunk loopName]
     put [indicatorChunk "starting", " ", commandChunk loopSettingCommand]
+    start <- getMonotonicTimeNSec
     ec <- startProcessAndWait loopSettingCommand
+    end <- getMonotonicTimeNSec
     put $ exitCodeChunks ec
+    let duration = end - start
+    put $ durationChunks duration
