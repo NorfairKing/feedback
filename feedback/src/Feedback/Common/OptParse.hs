@@ -34,7 +34,8 @@ data LoopSettings = LoopSettings
 
 data RunSettings = RunSettings
   { runSettingCommand :: !Command,
-    runSettingExtraEnv :: !(Map String String)
+    runSettingExtraEnv :: !(Map String String),
+    runSettingWorkingDir :: !(Maybe (Path Abs Dir))
   }
   deriving (Show, Eq, Generic)
 
@@ -42,6 +43,7 @@ combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> Lo
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
   let runSettingCommand = loopConfigCommand
   let runSettingExtraEnv = loopConfigExtraEnv
+  runSettingWorkingDir <- mapM resolveDir' loopConfigWorkingDir
 
   let loopSettingRunSettings = RunSettings {..}
   let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
@@ -75,6 +77,7 @@ instance HasCodec Configuration where
 data LoopConfiguration = LoopConfiguration
   { loopConfigCommand :: !Command,
     loopConfigExtraEnv :: !(Map String String),
+    loopConfigWorkingDir :: !(Maybe FilePath),
     loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
@@ -89,6 +92,7 @@ instance HasCodec LoopConfiguration where
             LoopConfiguration
               <$> commandObjectCodec .= loopConfigCommand
               <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= loopConfigExtraEnv
+              <*> optionalField "working-dir" "where the process will be run" .= loopConfigWorkingDir
               <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
@@ -105,6 +109,7 @@ makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigCommand = c,
       loopConfigExtraEnv = M.empty,
+      loopConfigWorkingDir = Nothing,
       loopConfigOutputConfiguration = Nothing
     }
 

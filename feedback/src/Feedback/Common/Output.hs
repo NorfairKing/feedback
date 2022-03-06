@@ -1,14 +1,17 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -fno-warn-unused-pattern-binds #-}
 
 module Feedback.Common.Output where
 
 import qualified Data.Map as M
+import Data.Maybe
 import qualified Data.Text as T
 import Data.Time
 import Data.Word
 import Feedback.Common.OptParse
+import Path
 import System.Exit
 import Text.Colour
 import Text.Printf
@@ -21,7 +24,7 @@ putTimedChunks terminalCapabilities chunks = do
   putStrLn ""
 
 indicatorChunk :: String -> Chunk
-indicatorChunk = fore cyan . chunk . T.pack . printf "%-8s"
+indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"
 
 loopNameChunk :: String -> Chunk
 loopNameChunk = fore yellow . chunk . T.pack
@@ -31,26 +34,33 @@ commandChunk = fore blue . chunk . T.pack
 
 startingLines :: RunSettings -> [[Chunk]]
 startingLines RunSettings {..} =
-  concat
-    [ case runSettingCommand of
-        CommandArgs command ->
-          [ [ indicatorChunk "starting",
+  let RunSettings _ _ _ = undefined
+   in concat
+        [ case runSettingCommand of
+            CommandArgs command ->
+              [ [ indicatorChunk "starting",
+                  " ",
+                  commandChunk command
+                ]
+              ]
+            CommandScript script ->
+              [ [ indicatorChunk "starting script\n",
+                  chunk $ T.pack script
+                ]
+              ],
+          [ [ indicatorChunk "working dir:",
               " ",
-              commandChunk command
+              chunk $ T.pack $ fromAbsDir workdir
             ]
-          ]
-        CommandScript script ->
-          [ [ indicatorChunk "starting script\n",
-              chunk $ T.pack script
-            ]
+            | workdir <- maybeToList runSettingWorkingDir
           ],
-      [ [ indicatorChunk "extra env",
-          " ",
-          chunk $ T.pack $ show $ M.toList runSettingExtraEnv
+          [ [ indicatorChunk "extra env:",
+              " ",
+              chunk $ T.pack $ show $ M.toList runSettingExtraEnv
+            ]
+            | not (null runSettingExtraEnv)
+          ]
         ]
-        | not (null runSettingExtraEnv)
-      ]
-    ]
 
 exitCodeChunks :: ExitCode -> [Chunk]
 exitCodeChunks ec =

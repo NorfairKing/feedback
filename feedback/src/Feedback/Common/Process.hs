@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -fno-warn-unused-pattern-binds #-}
 
 module Feedback.Common.Process where
 
@@ -37,8 +38,11 @@ startProcessHandle waiterFunc runSettings = do
 
 makeProcessConfigFor :: RunSettings -> IO (ProcessConfig () () ())
 makeProcessConfigFor RunSettings {..} = do
+  let RunSettings _ _ _ = undefined
+  -- Set up the environment
   env <- System.getEnvironment
   let envForProcess = M.toList $ M.union runSettingExtraEnv (M.fromList env)
+  -- Set up the command
   commandString <- case runSettingCommand of
     CommandArgs c -> pure c
     CommandScript s -> do
@@ -58,6 +62,7 @@ makeProcessConfigFor RunSettings {..} = do
       . setStderr inherit
       . setStdin closed -- TODO make this configurable?
       . setEnv envForProcess
+      . maybe id (setWorkingDir . fromAbsDir) runSettingWorkingDir
       $ shell commandString
 
 stopProcessHandle :: ProcessHandle -> IO ()
