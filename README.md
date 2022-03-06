@@ -24,7 +24,19 @@ loops:
   ci: nix-build ci.nix --no-out-link
 ```
 
+Then you can just run this command, and not have to remember the full incantation:
+
+```
+feedback ci
+```
+
 To see the full reference of options of the configuration file, run `feedback --help`.
+
+### CI Integration
+
+When sharing feedback loops with team members, it is important that no one breaks another's workflow.
+You can use `feedback-test` to test out the feedback loops in a one-shot manner, so you can check that they still work on CI.
+See `feedback-test --help` for more details.
 
 ## Comparison with other tools
 
