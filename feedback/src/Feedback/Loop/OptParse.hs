@@ -1,6 +1,3 @@
-{-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE OverloadedLists #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Feedback.Loop.OptParse where

@@ -24,6 +24,7 @@ library
       Feedback.Loop
       Feedback.Loop.OptParse
       Feedback.Test
+      Feedback.Test.OptParse
   other-modules:
       Paths_feedback
   hs-source-dirs:
