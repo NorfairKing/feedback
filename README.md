@@ -51,6 +51,7 @@ See `feedback-test --help` for more details.
 | Cancelling previous runs that aren't done yet | ✔️ | ✔️ | ✔️ | ✖ |
 | Long-form flags for every option | ✔️ | ✔️ | ✔️ | ✖ |
 | CI integration | ✔️ | C | C | C |
+| Indication of how long the loop took | ✔️ | C | C | C |
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself

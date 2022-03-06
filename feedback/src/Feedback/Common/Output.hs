@@ -19,7 +19,7 @@ indicatorChunk :: String -> Chunk
 indicatorChunk = fore cyan . chunk . T.pack
 
 loopNameChunk :: String -> Chunk
-loopNameChunk = chunk . T.pack
+loopNameChunk = fore yellow . chunk . T.pack
 
 commandChunk :: String -> Chunk
 commandChunk = fore blue . chunk . T.pack
