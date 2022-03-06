@@ -36,7 +36,7 @@ library:
 
 executables:
   feedback:
-    main:                Main.hs
+    main: Loop.main
     source-dirs:         app
     ghc-options:
     - -threaded
@@ -44,11 +44,9 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - feedback
-
-tests:
   feedback-test:
-    main:                Spec.hs
-    source-dirs:         test
+    main: Test.main
+    source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts

@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Feedback where
+module Feedback.Loop where
 
 import Control.Monad
 import Data.List
@@ -18,8 +18,8 @@ import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
 
-runFeedbackMain :: IO ()
-runFeedbackMain = do
+runFeedbackLoop :: IO ()
+runFeedbackLoop = do
   Settings {..} <- getSettings
   eventChan <- newChan
   outputChan <- newChan
