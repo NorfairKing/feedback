@@ -16,6 +16,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Data.Version
 import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
 import GHC.Generics (Generic)
@@ -23,6 +24,7 @@ import Options.Applicative as OptParse
 import qualified Options.Applicative.Help as OptParse (string)
 import Path
 import Path.IO
+import Paths_feedback
 
 data LoopSettings = LoopSettings
   { loopSettingCommand :: !String,
@@ -70,12 +72,13 @@ data LoopConfiguration = LoopConfiguration
 
 instance HasCodec LoopConfiguration where
   codec =
-    dimapCodec f g $
-      disjointEitherCodec codec $
-        object "LoopConfiguration" $
-          LoopConfiguration
-            <$> requiredField "command" "the command to run on change" .= loopConfigCommand
-            <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
+    named "LoopConfiguration" $
+      dimapCodec f g $
+        disjointEitherCodec codec $
+          object "LoopConfiguration" $
+            LoopConfiguration
+              <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+              <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
         Left c -> makeLoopConfiguration c
@@ -99,9 +102,10 @@ data OutputConfiguration = OutputConfiguration
 
 instance HasCodec OutputConfiguration where
   codec =
-    object "OutputConfiguration" $
-      OutputConfiguration
-        <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
+    named "OutputConfiguration" $
+      object "OutputConfiguration" $
+        OutputConfiguration
+          <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
 
 instance Semigroup OutputConfiguration where
   (<>) oc1 oc2 =
@@ -158,11 +162,19 @@ flagsParser :: OptParse.ParserInfo Flags
 flagsParser =
   OptParse.info
     (OptParse.helper <*> parseFlags)
-    (OptParse.fullDesc <> OptParse.footerDoc (Just $ OptParse.string footerStr))
+    ( mconcat
+        [ OptParse.progDesc versionStr,
+          OptParse.fullDesc,
+          OptParse.footerDoc (Just $ OptParse.string footerStr)
+        ]
+    )
   where
+    versionStr =
+      "Version: " <> showVersion version
     footerStr =
       unlines
-        [ Env.helpDoc environmentParser,
+        [ "",
+          Env.helpDoc environmentParser,
           "",
           "Configuration file format:",
           T.unpack (TE.decodeUtf8 (renderColouredSchemaViaCodec @Configuration))
@@ -197,7 +209,8 @@ parseFlags =
             <$> many
               ( strArgument
                   ( mconcat
-                      [ help "The command to run"
+                      [ help "The command to run",
+                        metavar "COMMAND"
                       ]
                   )
               )

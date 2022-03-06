@@ -3,6 +3,9 @@ resolver: lts-18.16
 packages:
 - feedback
 
+ghc-options:
+  "$locals": -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -Wpartial-fields -Widentities -Wredundant-constraints -Wcpp-undef
+
 extra-deps:
 - github: NorfairKing/safe-coloured-text
   commit: f30fe0e4d2a0fa036967ffe17538b60e5f9861f5

@@ -56,7 +56,7 @@ See `feedback-test --help` for more details.
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself
-* 🚧 — Under development
+* 🚧: Under development
 * ✖️: Not supported
 * ?: I don't know.
 
