@@ -1,0 +1,5 @@
+loops:
+  ci:
+    command: nix-build ci.nix
+  install:
+    command: stack install

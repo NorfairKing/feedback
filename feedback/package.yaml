@@ -19,6 +19,7 @@ library:
   - conduit
   - conduit-extra
   - containers
+  - containers
   - cursor
   - envparse
   - fsnotify

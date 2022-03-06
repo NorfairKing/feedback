@@ -10,6 +10,9 @@ module Feedback.OptParse where
 import Autodocodec
 import Autodocodec.Yaml
 import Control.Applicative
+import Control.Monad
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -29,7 +32,7 @@ getSettings = do
   combineToSettings flags env config
 
 data Settings = Settings
-  { settingCommand :: ![String],
+  { settingCommand :: !String,
     settingOutputSettings :: !OutputSettings
   }
   deriving (Show, Eq, Generic)
@@ -42,7 +45,25 @@ data OutputSettings = OutputSettings
 -- | Combine everything to 'Settings'
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
 combineToSettings Flags {..} Environment {} mConf = do
-  let settingCommand = flagCommand
+  let loops = maybe M.empty configLoops mConf
+  settingCommand <- case M.lookup flagCommand loops of
+    Nothing -> do
+      when (not (null loops)) $
+        putStrLn $
+          unwords
+            [ "No loop found with name",
+              show flagCommand <> ",",
+              "interpreting it as a standalone command"
+            ]
+      pure flagCommand
+    Just LoopConfiguration {..} -> do
+      putStrLn $
+        unwords
+          [ "Interpreting",
+            show flagCommand,
+            "as the name of a configured loop"
+          ]
+      pure loopConfigCommand
   let settingOutputSettings = combineToOutputSettings (mConf >>= configOutputConfiguration)
   pure Settings {..}
 
@@ -52,7 +73,8 @@ combineToOutputSettings mConf =
    in OutputSettings {..}
 
 data Configuration = Configuration
-  { configOutputConfiguration :: !(Maybe OutputConfiguration)
+  { configLoops :: !(Map String LoopConfiguration),
+    configOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec Configuration)
@@ -61,7 +83,20 @@ instance HasCodec Configuration where
   codec =
     object "Configuration" $
       Configuration
-        <$> optionalField' "output" .= configOutputConfiguration
+        <$> optionalFieldWithOmittedDefault' "loops" M.empty .= configLoops
+        <*> optionalField' "output" .= configOutputConfiguration
+
+data LoopConfiguration = LoopConfiguration
+  { loopConfigCommand :: !String
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec LoopConfiguration)
+
+instance HasCodec LoopConfiguration where
+  codec =
+    object "LoopConfiguration" $
+      LoopConfiguration
+        <$> requiredField "command" "the command to run on change" .= loopConfigCommand
 
 data OutputConfiguration = OutputConfiguration
   { outputConfigClear :: !(Maybe Clear)
@@ -130,7 +165,7 @@ flagsParser =
 
 data Flags = Flags
   { flagConfigFile :: !(Maybe FilePath),
-    flagCommand :: ![String],
+    flagCommand :: !String,
     flagOutputFlags :: !OutputFlags
   }
   deriving (Show, Eq, Generic)
@@ -152,13 +187,15 @@ parseFlags =
               ]
           )
       )
-    <*> many
-      ( strArgument
-          ( mconcat
-              [ help "The command to run"
-              ]
-          )
-      )
+    <*> ( unwords
+            <$> many
+              ( strArgument
+                  ( mconcat
+                      [ help "The command to run"
+                      ]
+                  )
+              )
+        )
     <*> parseOutputFlags
 
 parseOutputFlags :: OptParse.Parser OutputFlags

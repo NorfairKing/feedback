@@ -13,7 +13,6 @@ import Path
 import Path.IO
 import System.Exit
 import System.FSNotify as FS
-import System.Process (showCommandForUser)
 import System.Process.Typed as Typed
 import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
@@ -70,7 +69,7 @@ isHiddenIn curdir ad =
     Nothing -> False
     Just rp -> "." `isPrefixOf` toFilePath rp
 
-processWorker :: [String] -> Chan FS.Event -> Chan Output -> IO ()
+processWorker :: String -> Chan FS.Event -> Chan Output -> IO ()
 processWorker command eventChan outputChan = do
   let sendOutput = writeChan outputChan
   currentProcessVar <- newEmptyMVar
@@ -81,7 +80,7 @@ processWorker command eventChan outputChan = do
                 . setStderr inherit
                 . setStdin closed -- TODO make this configurable?
                 . shell
-                $ unwords command
+                $ command
         processHandleProcess <- startProcess processConfig
         processHandleWaiter <- async $ do
           ec <- waitExitCode processHandleProcess
@@ -114,7 +113,7 @@ data Output
   = OutputEvent !FS.Event
   | OutputKilling
   | OutputKilled
-  | OutputProcessStarted ![String]
+  | OutputProcessStarted !String
   | OutputProcessExited !ExitCode
   deriving (Show)
 
@@ -143,15 +142,12 @@ outputWorker OutputSettings {..} outputChan = do
       OutputKilled -> put [fore cyan "killed"]
       OutputProcessStarted command -> do
         case outputSettingClear of
-          ClearScreen -> putStrLn "\ESCc"
+          ClearScreen -> putStr "\ESCc"
           DoNotClearScreen -> pure ()
-        let commandString = case command of
-              [] -> ""
-              (bin : args) -> showCommandForUser bin args
         put
           [ fore cyan "started:",
             " ",
-            fore blue $ chunk $ T.pack commandString
+            fore blue $ chunk $ T.pack command
           ]
       OutputProcessExited ec ->
         case ec of
