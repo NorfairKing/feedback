@@ -21,7 +21,7 @@ runFeedbackTest = do
     put [indicatorChunk "testing ", " ", loopNameChunk loopName]
     put [indicatorChunk "starting", " ", commandChunk loopSettingCommand]
     start <- getMonotonicTimeNSec
-    ec <- startProcessAndWait loopSettingCommand
+    ec <- startProcessAndWait loopSettingExtraEnv loopSettingCommand
     end <- getMonotonicTimeNSec
     put $ exitCodeChunks ec
     let duration = end - start

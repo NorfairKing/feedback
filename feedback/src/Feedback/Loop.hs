@@ -6,6 +6,7 @@ module Feedback.Loop where
 
 import Control.Monad
 import Data.List
+import Data.Map (Map)
 import qualified Data.Text as T
 import Data.Word
 import Feedback.Common.OptParse
@@ -38,7 +39,7 @@ runFeedbackLoop = do
         $ \event -> do
           writeChan eventChan event
     concurrently_
-      (processWorker loopSettingCommand eventChan outputChan)
+      (processWorker loopSettingExtraEnv loopSettingCommand eventChan outputChan)
       (outputWorker loopSettingOutputSettings outputChan)
     stopListeningAction
 
@@ -72,8 +73,8 @@ isHiddenIn curdir ad =
     Nothing -> False
     Just rp -> "." `isPrefixOf` toFilePath rp
 
-processWorker :: String -> Chan FS.Event -> Chan Output -> IO ()
-processWorker command eventChan outputChan = do
+processWorker :: Map String String -> String -> Chan FS.Event -> Chan Output -> IO ()
+processWorker extraEnv command eventChan outputChan = do
   let sendOutput = writeChan outputChan
   currentProcessVar <- newEmptyMVar
   let startNewProcess = do
@@ -84,6 +85,7 @@ processWorker command eventChan outputChan = do
         processHandle <-
           startProcessHandle
             endFunc
+            extraEnv
             command
         putMVar currentProcessVar processHandle
         sendOutput $ OutputProcessStarted command

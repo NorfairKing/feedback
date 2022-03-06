@@ -28,6 +28,7 @@ import Paths_feedback
 
 data LoopSettings = LoopSettings
   { loopSettingCommand :: !String,
+    loopSettingExtraEnv :: !(Map String String),
     loopSettingOutputSettings :: !OutputSettings
   }
   deriving (Show, Eq, Generic)
@@ -36,6 +37,7 @@ combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> Lo
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
   let loopSettingCommand = loopConfigCommand
   let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
+  let loopSettingExtraEnv = loopConfigExtraEnv
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   pure LoopSettings {..}
 
@@ -65,6 +67,7 @@ instance HasCodec Configuration where
 
 data LoopConfiguration = LoopConfiguration
   { loopConfigCommand :: !String,
+    loopConfigExtraEnv :: !(Map String String),
     loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
@@ -78,19 +81,23 @@ instance HasCodec LoopConfiguration where
           object "LoopConfiguration" $
             LoopConfiguration
               <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+              <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= loopConfigExtraEnv
               <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
         Left c -> makeLoopConfiguration c
         Right loopConfig -> loopConfig
-      g loopConfig@(LoopConfiguration c mOutputConfig) = case mOutputConfig of
-        Nothing -> Left c
-        Just _ -> Right loopConfig
+      g loopConfig =
+        let c = loopConfigCommand loopConfig
+         in if loopConfig == makeLoopConfiguration c
+              then Left c
+              else Right loopConfig
 
 makeLoopConfiguration :: String -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigCommand = c,
+      loopConfigExtraEnv = M.empty,
       loopConfigOutputConfiguration = Nothing
     }
 
