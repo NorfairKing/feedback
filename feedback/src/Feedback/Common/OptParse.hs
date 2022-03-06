@@ -24,6 +24,19 @@ import qualified Options.Applicative.Help as OptParse (string)
 import Path
 import Path.IO
 
+data LoopSettings = LoopSettings
+  { loopSettingCommand :: !String,
+    loopSettingOutputSettings :: !OutputSettings
+  }
+  deriving (Show, Eq, Generic)
+
+combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
+combineToLoopSettings Flags {..} Environment {..} mDefaultOutputConfig LoopConfiguration {..} = do
+  let loopSettingCommand = loopConfigCommand
+  let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
+  let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
+  pure LoopSettings {..}
+
 data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
   }
@@ -65,15 +78,18 @@ instance HasCodec LoopConfiguration where
             <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
-        Left c ->
-          LoopConfiguration
-            { loopConfigCommand = c,
-              loopConfigOutputConfiguration = Nothing
-            }
+        Left c -> makeLoopConfiguration c
         Right loopConfig -> loopConfig
       g loopConfig@(LoopConfiguration c mOutputConfig) = case mOutputConfig of
         Nothing -> Left c
         Just _ -> Right loopConfig
+
+makeLoopConfiguration :: String -> LoopConfiguration
+makeLoopConfiguration c =
+  LoopConfiguration
+    { loopConfigCommand = c,
+      loopConfigOutputConfiguration = Nothing
+    }
 
 data OutputConfiguration = OutputConfiguration
   { outputConfigClear :: !(Maybe Clear)

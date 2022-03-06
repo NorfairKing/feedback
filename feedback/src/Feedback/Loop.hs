@@ -21,7 +21,7 @@ import UnliftIO
 
 runFeedbackLoop :: IO ()
 runFeedbackLoop = do
-  Settings {..} <- getSettings
+  LoopSettings {..} <- getLoopSettings
   eventChan <- newChan
   outputChan <- newChan
   here <- getCurrentDir
@@ -36,8 +36,8 @@ runFeedbackLoop = do
         $ \event -> do
           writeChan eventChan event
     concurrently_
-      (processWorker settingCommand eventChan outputChan)
-      (outputWorker settingOutputSettings outputChan)
+      (processWorker loopSettingCommand eventChan outputChan)
+      (outputWorker loopSettingOutputSettings outputChan)
     stopListeningAction
 
 eventFilter :: Path Abs Dir -> FS.Event -> Bool

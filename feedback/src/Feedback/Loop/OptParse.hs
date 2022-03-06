@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,25 +12,17 @@ import Feedback.Common.OptParse
 import GHC.Generics (Generic)
 import Text.Show.Pretty (pPrint)
 
-getSettings :: IO Settings
-getSettings = do
+getLoopSettings :: IO LoopSettings
+getLoopSettings = do
   flags <- getFlags
   env <- getEnvironment
   config <- getConfiguration flags env
   combineToSettings flags env config
 
-data Settings = Settings
-  { settingCommand :: !String,
-    settingOutputSettings :: !OutputSettings
-  }
-  deriving (Show, Eq, Generic)
-
--- | Combine everything to 'Settings'
-combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
-combineToSettings Flags {..} Environment {} mConf = do
+combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO LoopSettings
+combineToSettings flags@Flags {..} environment mConf = do
   let loops = maybe M.empty configLoops mConf
-  let defaultOutputConfig = mConf >>= configOutputConfiguration
-  (settingCommand, outputConfig) <- case M.lookup flagCommand loops of
+  loopConfig <- case M.lookup flagCommand loops of
     Nothing -> do
       when (not (null loops)) $
         putStrLn $
@@ -40,16 +31,20 @@ combineToSettings Flags {..} Environment {} mConf = do
               show flagCommand <> ",",
               "interpreting it as a standalone command."
             ]
-      pure (flagCommand, defaultOutputConfig)
-    Just LoopConfiguration {..} -> do
+      pure $ makeLoopConfiguration flagCommand
+    Just config -> do
       putStrLn $
         unwords
           [ "Interpreting",
             show flagCommand,
             "as the name of a configured loop."
           ]
-      pure (loopConfigCommand, liftA2 (<>) loopConfigOutputConfiguration defaultOutputConfig)
-  let settingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
-  let settings = Settings {..}
-  when flagDebug $ pPrint settings
-  pure settings
+      pure config
+  loopSets <-
+    combineToLoopSettings
+      flags
+      environment
+      (mConf >>= configOutputConfiguration)
+      loopConfig
+  when flagDebug $ pPrint loopSets
+  pure loopSets
