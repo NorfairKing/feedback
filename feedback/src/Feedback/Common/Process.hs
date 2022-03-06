@@ -1,21 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Feedback.Common.Process where
 
-import Control.Monad
-import Data.List
-import qualified Data.Text as T
-import Data.Time
-import Feedback.Common.OptParse
-import Feedback.Loop.OptParse
-import Path
-import Path.IO
 import System.Exit
-import System.FSNotify as FS
 import System.Process.Typed as Typed
-import Text.Colour
-import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
 
 data ProcessHandle = ProcessHandle

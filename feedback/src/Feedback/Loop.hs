@@ -7,15 +7,14 @@ module Feedback.Loop where
 import Control.Monad
 import Data.List
 import qualified Data.Text as T
-import Data.Time
 import Feedback.Common.OptParse
+import Feedback.Common.Output
 import Feedback.Common.Process
 import Feedback.Loop.OptParse
 import Path
 import Path.IO
 import System.Exit
 import System.FSNotify as FS
-import System.Process.Typed as Typed
 import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
@@ -107,17 +106,13 @@ data Output
 outputWorker :: OutputSettings -> Chan Output -> IO ()
 outputWorker OutputSettings {..} outputChan = do
   terminalCapabilities <- getTerminalCapabilitiesFromEnv
-  let put chunks = do
-        now <- getCurrentTime
-        let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
-        putChunksWith terminalCapabilities $ timeChunk : " " : chunks
-        putStrLn ""
+  let put = putTimedChunks terminalCapabilities
   forever $ do
     event <- readChan outputChan
     case event of
       OutputEvent fsEvent -> do
         put
-          [ fore cyan "event:   ",
+          [ indicatorChunk "event:",
             case fsEvent of
               Added {} -> fore green "added    "
               Modified {} -> fore yellow "modified "
@@ -125,28 +120,15 @@ outputWorker OutputSettings {..} outputChan = do
               Unknown {} -> "unknown  ",
             chunk $ T.pack $ eventPath fsEvent
           ]
-      OutputKilling -> put [fore cyan "killing"]
-      OutputKilled -> put [fore cyan "killed"]
+      OutputKilling -> put [indicatorChunk "killing"]
+      OutputKilled -> put [indicatorChunk "killed"]
       OutputProcessStarted command -> do
         case outputSettingClear of
           ClearScreen -> putStr "\ESCc"
           DoNotClearScreen -> pure ()
         put
-          [ fore cyan "started:",
+          [ indicatorChunk "started:",
             " ",
-            fore blue $ chunk $ T.pack command
+            commandChunk command
           ]
-      OutputProcessExited ec ->
-        case ec of
-          ExitSuccess ->
-            put
-              [ fore cyan "exited: ",
-                " ",
-                fore green "success"
-              ]
-          ExitFailure c ->
-            put
-              [ fore cyan "exited: ",
-                " ",
-                fore red $ chunk $ T.pack $ "failed: " <> show c
-              ]
+      OutputProcessExited ec -> put $ exitCodeChunks ec

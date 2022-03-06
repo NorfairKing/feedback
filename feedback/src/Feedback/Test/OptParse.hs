@@ -2,12 +2,10 @@
 
 module Feedback.Test.OptParse where
 
-import Control.Applicative
 import Control.Monad
 import Data.Map (Map)
 import qualified Data.Map as M
 import Feedback.Common.OptParse
-import GHC.Generics (Generic)
 import Text.Show.Pretty (pPrint)
 
 getSettings :: IO TestSettings

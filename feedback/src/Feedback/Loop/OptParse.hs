@@ -2,11 +2,9 @@
 
 module Feedback.Loop.OptParse where
 
-import Control.Applicative
 import Control.Monad
 import qualified Data.Map as M
 import Feedback.Common.OptParse
-import GHC.Generics (Generic)
 import Text.Show.Pretty (pPrint)
 
 getLoopSettings :: IO LoopSettings
