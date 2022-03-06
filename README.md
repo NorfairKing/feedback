@@ -52,6 +52,7 @@ See `feedback-test --help` for more details.
 | Long-form flags for every option | ✔️ | ✔️ | ✔️ | ✖ |
 | CI integration | ✔️ | C | C | C |
 | Indication of how long the loop took | ✔️ | C | C | C |
+| Shell integration (Commands with pipes "just work") | ✔️ | ✔️ | ✔️ | C |
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself
@@ -67,6 +68,3 @@ See `feedback-test --help` for more details.
   * Is it blocking on CPU, on memory, on network?
 * Manually activate a run
 * Manually cancel and re-activate a run
-* Low latency between change and rerun.
-* Cancelling failed feedback loops from before.
-* Ideally pipes still work in the loop, so we can do `feedback "nix-build | cachix push mycache"`.
