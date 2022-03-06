@@ -19,9 +19,9 @@ runFeedbackTest = do
   let put = putTimedChunks terminalCapabilities
   forM_ (M.toList testSettingLoops) $ \(loopName, LoopSettings {..}) -> do
     put [indicatorChunk "testing ", " ", loopNameChunk loopName]
-    put [indicatorChunk "starting", " ", commandChunk loopSettingCommand]
+    mapM_ put $ startingLines loopSettingRunSettings
     start <- getMonotonicTimeNSec
-    ec <- startProcessAndWait loopSettingExtraEnv loopSettingCommand
+    ec <- startProcessAndWait loopSettingRunSettings
     end <- getMonotonicTimeNSec
     put $ exitCodeChunks ec
     let duration = end - start

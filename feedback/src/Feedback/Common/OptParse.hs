@@ -27,17 +27,24 @@ import Path.IO
 import Paths_feedback
 
 data LoopSettings = LoopSettings
-  { loopSettingCommand :: !String,
-    loopSettingExtraEnv :: !(Map String String),
+  { loopSettingRunSettings :: !RunSettings,
     loopSettingOutputSettings :: !OutputSettings
+  }
+  deriving (Show, Eq, Generic)
+
+data RunSettings = RunSettings
+  { runSettingCommand :: !String,
+    runSettingExtraEnv :: !(Map String String)
   }
   deriving (Show, Eq, Generic)
 
 combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
-  let loopSettingCommand = loopConfigCommand
+  let runSettingCommand = loopConfigCommand
+  let runSettingExtraEnv = loopConfigExtraEnv
+
+  let loopSettingRunSettings = RunSettings {..}
   let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
-  let loopSettingExtraEnv = loopConfigExtraEnv
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   pure LoopSettings {..}
 

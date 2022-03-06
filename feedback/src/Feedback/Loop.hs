@@ -6,7 +6,6 @@ module Feedback.Loop where
 
 import Control.Monad
 import Data.List
-import Data.Map (Map)
 import qualified Data.Text as T
 import Data.Word
 import Feedback.Common.OptParse
@@ -39,7 +38,7 @@ runFeedbackLoop = do
         $ \event -> do
           writeChan eventChan event
     concurrently_
-      (processWorker loopSettingExtraEnv loopSettingCommand eventChan outputChan)
+      (processWorker loopSettingRunSettings eventChan outputChan)
       (outputWorker loopSettingOutputSettings outputChan)
     stopListeningAction
 
@@ -73,8 +72,8 @@ isHiddenIn curdir ad =
     Nothing -> False
     Just rp -> "." `isPrefixOf` toFilePath rp
 
-processWorker :: Map String String -> String -> Chan FS.Event -> Chan Output -> IO ()
-processWorker extraEnv command eventChan outputChan = do
+processWorker :: RunSettings -> Chan FS.Event -> Chan Output -> IO ()
+processWorker runSettings eventChan outputChan = do
   let sendOutput = writeChan outputChan
   currentProcessVar <- newEmptyMVar
   let startNewProcess = do
@@ -82,13 +81,9 @@ processWorker extraEnv command eventChan outputChan = do
         let endFunc ec = do
               end <- getMonotonicTimeNSec
               sendOutput $ OutputProcessExited ec (end - start)
-        processHandle <-
-          startProcessHandle
-            endFunc
-            extraEnv
-            command
+        processHandle <- startProcessHandle endFunc runSettings
         putMVar currentProcessVar processHandle
-        sendOutput $ OutputProcessStarted command
+        sendOutput $ OutputProcessStarted runSettings
   -- Start one process ahead of time
   startNewProcess
   forever $ do
@@ -107,7 +102,7 @@ data Output
   = OutputEvent !FS.Event
   | OutputKilling
   | OutputKilled
-  | OutputProcessStarted !String
+  | OutputProcessStarted !RunSettings
   | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
@@ -130,15 +125,11 @@ outputWorker OutputSettings {..} outputChan = do
           ]
       OutputKilling -> put [indicatorChunk "killing"]
       OutputKilled -> put [indicatorChunk "killed"]
-      OutputProcessStarted command -> do
+      OutputProcessStarted runSettings -> do
         case outputSettingClear of
           ClearScreen -> putStr "\ESCc"
           DoNotClearScreen -> pure ()
-        put
-          [ indicatorChunk "started:",
-            " ",
-            commandChunk command
-          ]
+        mapM_ put $ startingLines runSettings
       OutputProcessExited ec nanosecs -> do
         put $ exitCodeChunks ec
         put $ durationChunks nanosecs

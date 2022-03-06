@@ -3,8 +3,8 @@
 module Feedback.Common.Process where
 
 import Data.Map as M
-import qualified Data.Map as M
-import System.Environment (getEnvironment)
+import Feedback.Common.OptParse
+import System.Environment as System (getEnvironment)
 import System.Exit
 import System.Process.Typed as Typed
 import UnliftIO
@@ -16,30 +16,30 @@ data ProcessHandle = ProcessHandle
 
 type P = Process () () ()
 
-startProcessAndWait :: Map String String -> String -> IO ExitCode
-startProcessAndWait extraEnv command = do
-  processConfig <- makeProcessConfigFor extraEnv command
+startProcessAndWait :: RunSettings -> IO ExitCode
+startProcessAndWait runSettings = do
+  processConfig <- makeProcessConfigFor runSettings
   startProcess processConfig >>= waitExitCode
 
-startProcessHandle :: (ExitCode -> IO ()) -> Map String String -> String -> IO ProcessHandle
-startProcessHandle waiterFunc extraEnv command = do
-  processConfig <- makeProcessConfigFor extraEnv command
+startProcessHandle :: (ExitCode -> IO ()) -> RunSettings -> IO ProcessHandle
+startProcessHandle waiterFunc runSettings = do
+  processConfig <- makeProcessConfigFor runSettings
   processHandleProcess <- startProcess processConfig
   processHandleWaiter <- async $ do
     ec <- waitExitCode processHandleProcess
     waiterFunc ec
   pure ProcessHandle {..}
 
-makeProcessConfigFor :: Map String String -> String -> IO (ProcessConfig () () ())
-makeProcessConfigFor extraEnv command = do
-  env <- getEnvironment
-  let envForProcess = M.toList $ M.union extraEnv (M.fromList env)
+makeProcessConfigFor :: RunSettings -> IO (ProcessConfig () () ())
+makeProcessConfigFor RunSettings {..} = do
+  env <- System.getEnvironment
+  let envForProcess = M.toList $ M.union runSettingExtraEnv (M.fromList env)
   pure $
     setStdout inherit
       . setStderr inherit
       . setStdin closed -- TODO make this configurable?
       . setEnv envForProcess
-      $ shell command
+      $ shell runSettingCommand
 
 stopProcessHandle :: ProcessHandle -> IO ()
 stopProcessHandle ProcessHandle {..} = do
