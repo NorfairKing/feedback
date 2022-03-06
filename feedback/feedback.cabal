@@ -21,6 +21,7 @@ source-repository head
 library
   exposed-modules:
       Feedback.Common.OptParse
+      Feedback.Common.Process
       Feedback.Loop
       Feedback.Loop.OptParse
       Feedback.Test

@@ -28,4 +28,6 @@ combineToTestSettings flags@Flags {..} environment mConf = do
     traverse
       (combineToLoopSettings flags environment (mConf >>= configOutputConfiguration))
       (maybe M.empty configLoops mConf)
-  pure TestSettings {..}
+  let testSets = TestSettings {..}
+  when flagDebug $ pPrint testSets
+  pure testSets

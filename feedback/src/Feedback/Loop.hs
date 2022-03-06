@@ -9,6 +9,7 @@ import Data.List
 import qualified Data.Text as T
 import Data.Time
 import Feedback.Common.OptParse
+import Feedback.Common.Process
 import Feedback.Loop.OptParse
 import Path
 import Path.IO
@@ -75,18 +76,11 @@ processWorker command eventChan outputChan = do
   let sendOutput = writeChan outputChan
   currentProcessVar <- newEmptyMVar
   let startNewProcess = do
-        -- Start a new process
-        let processConfig =
-              setStdout inherit
-                . setStderr inherit
-                . setStdin closed -- TODO make this configurable?
-                . shell
-                $ command
-        processHandleProcess <- startProcess processConfig
-        processHandleWaiter <- async $ do
-          ec <- waitExitCode processHandleProcess
-          sendOutput $ OutputProcessExited ec
-        putMVar currentProcessVar ProcessHandle {..}
+        processHandle <-
+          startProcessHandle
+            (sendOutput . OutputProcessExited)
+            command
+        putMVar currentProcessVar processHandle
         sendOutput $ OutputProcessStarted command
   -- Start one process ahead of time
   startNewProcess
@@ -98,17 +92,9 @@ processWorker command eventChan outputChan = do
     mCurrentProcess <- tryTakeMVar currentProcessVar
     forM_ mCurrentProcess $ \currentProcess -> do
       sendOutput OutputKilling
-      stopProcess $ processHandleProcess currentProcess
-      -- No need to cancel the waiter thread.
+      stopProcessHandle currentProcess
       sendOutput OutputKilled
     startNewProcess
-
-data ProcessHandle = ProcessHandle
-  { processHandleProcess :: !P,
-    processHandleWaiter :: Async ()
-  }
-
-type P = Process () () ()
 
 data Output
   = OutputEvent !FS.Event

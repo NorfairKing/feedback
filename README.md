@@ -2,15 +2,31 @@
 
 A general purpose tool to set up good feedback loops and share them with your team.
 
-## Example
+## Features
 
-Working on nix code?
+### Run feedback loops
+
+Use the `feedback` command to set up a feedback loop for your work.
+
+For example, if you are working on a nix build, you might use this feedback loop:
 
 ```
 feedback -- nix-build --no-out-link
 ```
 
-## Features & Comparison with other tools
+### Declarative feedback loops
+
+You can declare feedback loops in the `feedback.yaml` configuration file to share them with your team.
+For example, this gives you a [`ci.nix`-based feedback loop](https://cs-syd.eu/posts/2021-04-11-the-ci-nix-pattern):
+
+```
+loops:
+  ci: nix-build ci.nix --no-out-link
+```
+
+To see the full reference of options of the configuration file, run `feedback --help`.
+
+## Comparison with other tools
 
 | | feedback | [steeloverseer](https://github.com/schell/steeloverseer) | [watchexec](https://github.com/watchexec/watchexec) | [entr](https://github.com/eradman/entr)
 |----|-|-|-|-|
@@ -29,6 +45,8 @@ feedback -- nix-build --no-out-link
 * 🚧 — Under development
 * ✖️: Not supported
 * ?: I don't know.
+
+
 
 ## Someday/maybe ideas
 

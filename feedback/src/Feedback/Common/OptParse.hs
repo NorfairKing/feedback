@@ -31,7 +31,7 @@ data LoopSettings = LoopSettings
   deriving (Show, Eq, Generic)
 
 combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
-combineToLoopSettings Flags {..} Environment {..} mDefaultOutputConfig LoopConfiguration {..} = do
+combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
   let loopSettingCommand = loopConfigCommand
   let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig

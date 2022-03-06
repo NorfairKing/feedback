@@ -1,5 +1,5 @@
 loops:
   ci: nix-build ci.nix --no-out-link
-  install: stack build --exec='feedback --help' --no-nix --system-ghc
-  test: stack build --exec='feedback-test' --no-nix --system-ghc
+  install: stack build --exec='feedback --help' --no-nix --system-ghc --with-hpack hpack
+  test: stack build --exec='feedback-test --debug ci' --no-nix --system-ghc --with-hpack hpack
 
