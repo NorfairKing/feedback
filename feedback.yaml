@@ -1,5 +1,3 @@
 loops:
-  ci:
-    command: nix-build ci.nix
-  install:
-    command: stack install
+  ci: nix-build ci.nix --no-out-link
+  install: stack install

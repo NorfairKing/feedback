@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -97,9 +98,16 @@ data LoopConfiguration = LoopConfiguration
 
 instance HasCodec LoopConfiguration where
   codec =
-    object "LoopConfiguration" $
-      LoopConfiguration
-        <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+    dimapCodec f g $
+      eitherCodec codec $
+        object "LoopConfiguration" $
+          LoopConfiguration
+            <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+    where
+      f = \case
+        Left command -> LoopConfiguration {loopConfigCommand = command}
+        Right loopConfig -> loopConfig
+      g (LoopConfiguration command) = Left command
 
 data OutputConfiguration = OutputConfiguration
   { outputConfigClear :: !(Maybe Clear)
