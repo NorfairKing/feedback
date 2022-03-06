@@ -18,8 +18,8 @@ feedback -- nix-build --no-out-link
 | Indication of time | ✔️ | C | C | C |
 | Clear screen between feedback | ✔️ | C | C | ✔️ |
 | Gitignore-aware | 🚧 | ✖️ | ✔️ | ✖ |
-| Named feedback loops | 🚧 | ✖️ | ✖ | ✖ |
-| Configurable feedback loops | 🚧 | ✔️ | ✖ | ✖ |
+| Named feedback loops | ✔️ | ✖️ | ✖ | ✖ |
+| Configurable feedback loops | ✔️ | ✔️ | ✖ | ✖ |
 | Cancelling previous runs that aren't done yet | ✔️ | ✔️ | ✔️ | ✖ |
 | Long-form flags for every option | ✔️ | ✔️ | ✔️ | ✖ |
 

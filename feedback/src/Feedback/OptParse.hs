@@ -48,7 +48,8 @@ data OutputSettings = OutputSettings
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO Settings
 combineToSettings Flags {..} Environment {} mConf = do
   let loops = maybe M.empty configLoops mConf
-  settingCommand <- case M.lookup flagCommand loops of
+  let defaultOutputConfig = mConf >>= configOutputConfiguration
+  (settingCommand, outputConfig) <- case M.lookup flagCommand loops of
     Nothing -> do
       when (not (null loops)) $
         putStrLn $
@@ -57,7 +58,7 @@ combineToSettings Flags {..} Environment {} mConf = do
               show flagCommand <> ",",
               "interpreting it as a standalone command"
             ]
-      pure flagCommand
+      pure (flagCommand, defaultOutputConfig)
     Just LoopConfiguration {..} -> do
       putStrLn $
         unwords
@@ -65,8 +66,8 @@ combineToSettings Flags {..} Environment {} mConf = do
             show flagCommand,
             "as the name of a configured loop"
           ]
-      pure loopConfigCommand
-  let settingOutputSettings = combineToOutputSettings flagOutputFlags (mConf >>= configOutputConfiguration)
+      pure (loopConfigCommand, liftA2 (<>) loopConfigOutputConfiguration defaultOutputConfig)
+  let settingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   let settings = Settings {..}
   when flagDebug $ pPrint settings
   pure settings
@@ -88,10 +89,11 @@ instance HasCodec Configuration where
     object "Configuration" $
       Configuration
         <$> optionalFieldWithOmittedDefault' "loops" M.empty .= configLoops
-        <*> optionalField' "output" .= configOutputConfiguration
+        <*> optionalField "output" "default output configuration" .= configOutputConfiguration
 
 data LoopConfiguration = LoopConfiguration
-  { loopConfigCommand :: !String
+  { loopConfigCommand :: !String,
+    loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec LoopConfiguration)
@@ -99,15 +101,22 @@ data LoopConfiguration = LoopConfiguration
 instance HasCodec LoopConfiguration where
   codec =
     dimapCodec f g $
-      eitherCodec codec $
+      disjointEitherCodec codec $
         object "LoopConfiguration" $
           LoopConfiguration
             <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+            <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
-        Left command -> LoopConfiguration {loopConfigCommand = command}
+        Left c ->
+          LoopConfiguration
+            { loopConfigCommand = c,
+              loopConfigOutputConfiguration = Nothing
+            }
         Right loopConfig -> loopConfig
-      g (LoopConfiguration command) = Left command
+      g loopConfig@(LoopConfiguration c mOutputConfig) = case mOutputConfig of
+        Nothing -> Left c
+        Just _ -> Right loopConfig
 
 data OutputConfiguration = OutputConfiguration
   { outputConfigClear :: !(Maybe Clear)
@@ -120,6 +129,18 @@ instance HasCodec OutputConfiguration where
     object "OutputConfiguration" $
       OutputConfiguration
         <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
+
+instance Semigroup OutputConfiguration where
+  (<>) oc1 oc2 =
+    OutputConfiguration
+      { outputConfigClear = outputConfigClear oc1 <|> outputConfigClear oc2
+      }
+
+emptyOutputConfiguration :: OutputConfiguration
+emptyOutputConfiguration =
+  OutputConfiguration
+    { outputConfigClear = Nothing
+    }
 
 getConfiguration :: Flags -> Environment -> IO (Maybe Configuration)
 getConfiguration Flags {..} Environment {..} =
