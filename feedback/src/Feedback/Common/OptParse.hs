@@ -144,9 +144,7 @@ environmentParser :: Env.Parser Env.Error Environment
 environmentParser =
   Env.prefixed "FEEDBACK_" $
     Environment
-      <$> Env.var (fmap Just . Env.str) "CONFIG_FILE" (mE <> Env.help "Config file")
-  where
-    mE = Env.def Nothing <> Env.keep
+      <$> Env.var (fmap Just . Env.str) "CONFIG_FILE" (Env.def Nothing <> Env.help "Config file")
 
 getFlags :: IO Flags
 getFlags = customExecParser prefs_ flagsParser
