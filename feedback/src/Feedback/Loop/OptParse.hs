@@ -26,7 +26,7 @@ combineToSettings flags@Flags {..} environment mConf = do
               show flagCommand <> ",",
               "interpreting it as a standalone command."
             ]
-      pure $ makeLoopConfiguration flagCommand
+      pure $ makeLoopConfiguration $ CommandArgs flagCommand
     Just config -> do
       putStrLn $
         unwords

@@ -33,7 +33,7 @@ data LoopSettings = LoopSettings
   deriving (Show, Eq, Generic)
 
 data RunSettings = RunSettings
-  { runSettingCommand :: !String,
+  { runSettingCommand :: !Command,
     runSettingExtraEnv :: !(Map String String)
   }
   deriving (Show, Eq, Generic)
@@ -73,7 +73,7 @@ instance HasCodec Configuration where
         <*> optionalField "output" "default output configuration" .= configOutputConfiguration
 
 data LoopConfiguration = LoopConfiguration
-  { loopConfigCommand :: !String,
+  { loopConfigCommand :: !Command,
     loopConfigExtraEnv :: !(Map String String),
     loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
   }
@@ -84,23 +84,23 @@ instance HasCodec LoopConfiguration where
   codec =
     named "LoopConfiguration" $
       dimapCodec f g $
-        disjointEitherCodec codec $
+        eitherCodec (codec <?> "A bare command without any extra configuration") $
           object "LoopConfiguration" $
             LoopConfiguration
-              <$> requiredField "command" "the command to run on change" .= loopConfigCommand
+              <$> commandObjectCodec .= loopConfigCommand
               <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= loopConfigExtraEnv
               <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
-        Left c -> makeLoopConfiguration c
+        Left s -> makeLoopConfiguration (CommandArgs s)
         Right loopConfig -> loopConfig
       g loopConfig =
         let c = loopConfigCommand loopConfig
-         in if loopConfig == makeLoopConfiguration c
-              then Left c
-              else Right loopConfig
+         in case c of
+              CommandArgs cmd | loopConfig == makeLoopConfiguration c -> Left cmd
+              _ -> Right loopConfig
 
-makeLoopConfiguration :: String -> LoopConfiguration
+makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigCommand = c,
@@ -217,23 +217,44 @@ parseFlags =
               ]
           )
       )
-    <*> ( unwords
-            <$> many
-              ( strArgument
-                  ( mconcat
-                      [ help "The command to run",
-                        metavar "COMMAND"
-                      ]
-                  )
-              )
-        )
+    <*> parseCommandFlags
     <*> parseOutputFlags
     <*> switch (mconcat [long "debug", help "show debug information"])
+
+parseCommandFlags :: OptParse.Parser String
+parseCommandFlags =
+  let commandArg =
+        strArgument
+          ( mconcat
+              [ help "The command to run",
+                metavar "COMMAND"
+              ]
+          )
+   in unwords <$> some commandArg
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
   OutputFlags
     <$> parseClearFlag
+
+data Command
+  = CommandArgs !String
+  | CommandScript !String
+  deriving (Show, Eq, Generic)
+
+commandObjectCodec :: JSONObjectCodec Command
+commandObjectCodec =
+  dimapCodec f g $
+    eitherCodec
+      (requiredField "command" "the command to run on change")
+      (requiredField "script" "the script to run on change")
+  where
+    f = \case
+      Left c -> CommandArgs c
+      Right s -> CommandScript s
+    g = \case
+      CommandArgs c -> Left c
+      CommandScript s -> Right s
 
 data Clear = ClearScreen | DoNotClearScreen
   deriving (Show, Eq, Generic)

@@ -32,11 +32,18 @@ commandChunk = fore blue . chunk . T.pack
 startingLines :: RunSettings -> [[Chunk]]
 startingLines RunSettings {..} =
   concat
-    [ [ [ indicatorChunk "starting",
-          " ",
-          commandChunk runSettingCommand
-        ]
-      ],
+    [ case runSettingCommand of
+        CommandArgs command ->
+          [ [ indicatorChunk "starting",
+              " ",
+              commandChunk command
+            ]
+          ]
+        CommandScript script ->
+          [ [ indicatorChunk "starting script\n",
+              chunk $ T.pack script
+            ]
+          ],
       [ [ indicatorChunk "extra env",
           " ",
           chunk $ T.pack $ show $ M.toList runSettingExtraEnv

@@ -3,11 +3,16 @@
 module Feedback.Common.Process where
 
 import Data.Map as M
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import Feedback.Common.OptParse
+import Path
+import Path.IO
 import System.Environment as System (getEnvironment)
 import System.Exit
 import System.Process.Typed as Typed
 import UnliftIO
+import UnliftIO.IO.File
 
 data ProcessHandle = ProcessHandle
   { processHandleProcess :: !P,
@@ -34,12 +39,26 @@ makeProcessConfigFor :: RunSettings -> IO (ProcessConfig () () ())
 makeProcessConfigFor RunSettings {..} = do
   env <- System.getEnvironment
   let envForProcess = M.toList $ M.union runSettingExtraEnv (M.fromList env)
+  commandString <- case runSettingCommand of
+    CommandArgs c -> pure c
+    CommandScript s -> do
+      -- Write the script to a file
+      systemTempDir <- getTempDir
+      scriptFile <- resolveFile systemTempDir "feedback-script.sh"
+      writeBinaryFileDurableAtomic (fromAbsFile scriptFile) (TE.encodeUtf8 (T.pack s))
+      -- Make the script executable
+      oldPermissions <- getPermissions scriptFile
+      let newPermissions = setOwnerExecutable True oldPermissions
+      setPermissions scriptFile newPermissions
+
+      pure $ fromAbsFile scriptFile
+
   pure $
     setStdout inherit
       . setStderr inherit
       . setStdin closed -- TODO make this configurable?
       . setEnv envForProcess
-      $ shell runSettingCommand
+      $ shell commandString
 
 stopProcessHandle :: ProcessHandle -> IO ()
 stopProcessHandle ProcessHandle {..} = do
