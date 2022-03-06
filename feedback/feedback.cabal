@@ -32,8 +32,6 @@ library
     , autodocodec-yaml
     , base >=4.7 && <5
     , bytestring
-    , conduit
-    , conduit-extra
     , containers
     , cursor
     , envparse
@@ -42,6 +40,7 @@ library
     , optparse-applicative
     , path
     , path-io
+    , pretty-show
     , process
     , safe-coloured-text
     , safe-coloured-text-terminfo

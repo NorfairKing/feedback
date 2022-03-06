@@ -23,6 +23,7 @@ import Options.Applicative as OptParse
 import qualified Options.Applicative.Help as OptParse (string)
 import Path
 import Path.IO
+import Text.Show.Pretty (pPrint)
 
 getSettings :: IO Settings
 getSettings = do
@@ -64,12 +65,14 @@ combineToSettings Flags {..} Environment {} mConf = do
             "as the name of a configured loop"
           ]
       pure loopConfigCommand
-  let settingOutputSettings = combineToOutputSettings (mConf >>= configOutputConfiguration)
-  pure Settings {..}
+  let settingOutputSettings = combineToOutputSettings flagOutputFlags (mConf >>= configOutputConfiguration)
+  let settings = Settings {..}
+  when flagDebug $ pPrint settings
+  pure settings
 
-combineToOutputSettings :: Maybe OutputConfiguration -> OutputSettings
-combineToOutputSettings mConf =
-  let outputSettingClear = fromMaybe ClearScreen $ mConf >>= outputConfigClear
+combineToOutputSettings :: OutputFlags -> Maybe OutputConfiguration -> OutputSettings
+combineToOutputSettings OutputFlags {..} mConf =
+  let outputSettingClear = fromMaybe ClearScreen $ outputFlagClear <|> (mConf >>= outputConfigClear)
    in OutputSettings {..}
 
 data Configuration = Configuration
@@ -166,7 +169,8 @@ flagsParser =
 data Flags = Flags
   { flagConfigFile :: !(Maybe FilePath),
     flagCommand :: !String,
-    flagOutputFlags :: !OutputFlags
+    flagOutputFlags :: !OutputFlags,
+    flagDebug :: Bool
   }
   deriving (Show, Eq, Generic)
 
@@ -197,6 +201,7 @@ parseFlags =
               )
         )
     <*> parseOutputFlags
+    <*> switch (mconcat [long "debug", help "show debug information"])
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
