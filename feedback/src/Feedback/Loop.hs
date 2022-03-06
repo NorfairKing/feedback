@@ -22,25 +22,28 @@ import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
 
 runFeedbackLoop :: IO ()
-runFeedbackLoop = do
-  LoopSettings {..} <- getLoopSettings
-  eventChan <- newChan
-  outputChan <- newChan
-  here <- getCurrentDir
-  -- 0.1 second debouncing, 0.001 was too little
-  let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
-  FS.withManagerConf conf $ \watchManager -> do
-    stopListeningAction <-
-      FS.watchTree
-        watchManager
-        (fromAbsDir here) -- Where to watch
-        (eventFilter here)
-        $ \event -> do
-          writeChan eventChan event
-    concurrently_
-      (processWorker loopSettingRunSettings eventChan outputChan)
-      (outputWorker loopSettingOutputSettings outputChan)
-    stopListeningAction
+runFeedbackLoop =
+  -- The outer loop happens here, before 'getLoopSettings'
+  -- so that the loop can be the thing that's being worked on as well.
+  forever $ do
+    LoopSettings {..} <- getLoopSettings
+    eventChan <- newChan
+    outputChan <- newChan
+    here <- getCurrentDir
+    -- 0.1 second debouncing, 0.001 was too little
+    let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
+    FS.withManagerConf conf $ \watchManager -> do
+      stopListeningAction <-
+        FS.watchTree
+          watchManager
+          (fromAbsDir here) -- Where to watch
+          (eventFilter here)
+          $ \event -> do
+            writeChan eventChan event
+      race_
+        (processWorker loopSettingRunSettings eventChan outputChan)
+        (outputWorker loopSettingOutputSettings outputChan)
+      stopListeningAction
 
 eventFilter :: Path Abs Dir -> FS.Event -> Bool
 eventFilter here fsEvent =
@@ -75,28 +78,38 @@ isHiddenIn curdir ad =
 processWorker :: RunSettings -> Chan FS.Event -> Chan Output -> IO ()
 processWorker runSettings eventChan outputChan = do
   let sendOutput = writeChan outputChan
-  currentProcessVar <- newEmptyMVar
-  let startNewProcess = do
-        start <- getMonotonicTimeNSec
-        let endFunc ec = do
-              end <- getMonotonicTimeNSec
-              sendOutput $ OutputProcessExited ec (end - start)
-        processHandle <- startProcessHandle endFunc runSettings
-        putMVar currentProcessVar processHandle
-        sendOutput $ OutputProcessStarted runSettings
-  -- Start one process ahead of time
-  startNewProcess
-  forever $ do
-    -- Output the event that made the rerun happen
-    event <- readChan eventChan
-    sendOutput $ OutputEvent event
-    -- Kill the current process
-    mCurrentProcess <- tryTakeMVar currentProcessVar
-    forM_ mCurrentProcess $ \currentProcess -> do
+  -- Record starting time
+  start <- getMonotonicTimeNSec
+  -- Start process
+  processHandle <- startProcessHandle runSettings
+  -- Output that the process has started
+  sendOutput $ OutputProcessStarted runSettings
+  -- Either wait for it to finish or wait for an event
+  eventOrDone <- race (readChan eventChan) (waitProcessHandle processHandle)
+  case eventOrDone of
+    -- If An event happened first, output it and kill the process.
+    Left event -> do
+      -- Output the event that has fired
+      sendOutput $ OutputEvent event
+      -- Output that killing will start
       sendOutput OutputKilling
-      stopProcessHandle currentProcess
+      -- Kill the process
+      stopProcessHandle processHandle
+      -- Output that the process has been killed
       sendOutput OutputKilled
-    startNewProcess
+      -- Wait for the process to finish (should have by now)
+      ec <- waitProcessHandle processHandle
+      -- Record the end time
+      end <- getMonotonicTimeNSec
+      -- Output that the process has finished
+      sendOutput $ OutputProcessExited ec (end - start)
+    -- If the process finished first, show the result and wait for an event anyway
+    Right ec -> do
+      end <- getMonotonicTimeNSec
+      sendOutput $ OutputProcessExited ec (end - start)
+      -- Output the event that made the rerun happen
+      event <- readChan eventChan
+      sendOutput $ OutputEvent event
 
 data Output
   = OutputEvent !FS.Event
@@ -117,10 +130,10 @@ outputWorker OutputSettings {..} outputChan = do
         put
           [ indicatorChunk "event:",
             case fsEvent of
-              Added {} -> fore green "added    "
-              Modified {} -> fore yellow "modified "
-              Removed {} -> fore red "removed  "
-              Unknown {} -> "unknown  ",
+              Added {} -> fore green " added    "
+              Modified {} -> fore yellow " modified "
+              Removed {} -> fore red " removed  "
+              Unknown {} -> " unknown  ",
             chunk $ T.pack $ eventPath fsEvent
           ]
       OutputKilling -> put [indicatorChunk "killing"]

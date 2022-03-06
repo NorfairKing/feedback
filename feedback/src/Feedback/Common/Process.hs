@@ -12,12 +12,10 @@ import Path.IO
 import System.Environment as System (getEnvironment)
 import System.Exit
 import System.Process.Typed as Typed
-import UnliftIO
 import UnliftIO.IO.File
 
 data ProcessHandle = ProcessHandle
-  { processHandleProcess :: !P,
-    processHandleWaiter :: Async ()
+  { processHandleProcess :: !P
   }
 
 type P = Process () () ()
@@ -27,14 +25,14 @@ startProcessAndWait runSettings = do
   processConfig <- makeProcessConfigFor runSettings
   startProcess processConfig >>= waitExitCode
 
-startProcessHandle :: (ExitCode -> IO ()) -> RunSettings -> IO ProcessHandle
-startProcessHandle waiterFunc runSettings = do
+startProcessHandle :: RunSettings -> IO ProcessHandle
+startProcessHandle runSettings = do
   processConfig <- makeProcessConfigFor runSettings
   processHandleProcess <- startProcess processConfig
-  processHandleWaiter <- async $ do
-    ec <- waitExitCode processHandleProcess
-    waiterFunc ec
   pure ProcessHandle {..}
+
+waitProcessHandle :: ProcessHandle -> IO ExitCode
+waitProcessHandle ProcessHandle {..} = waitExitCode processHandleProcess
 
 makeProcessConfigFor :: RunSettings -> IO (ProcessConfig () () ())
 makeProcessConfigFor RunSettings {..} = do
