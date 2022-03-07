@@ -40,7 +40,7 @@ combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfigu
 
   loopSettingRunSettings <- combineToRunSettings loopConfigRunConfiguration
 
-  let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
+  let outputConfig = maybe loopConfigOutputConfiguration (<> loopConfigOutputConfiguration) mDefaultOutputConfig
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   pure LoopSettings {..}
 
@@ -68,9 +68,9 @@ data OutputSettings = OutputSettings
   }
   deriving (Show, Eq, Generic)
 
-combineToOutputSettings :: OutputFlags -> Maybe OutputConfiguration -> OutputSettings
+combineToOutputSettings :: OutputFlags -> OutputConfiguration -> OutputSettings
 combineToOutputSettings OutputFlags {..} mConf =
-  let outputSettingClear = fromMaybe ClearScreen $ outputFlagClear <|> (mConf >>= outputConfigClear)
+  let outputSettingClear = fromMaybe ClearScreen $ outputFlagClear <|> outputConfigClear mConf
    in OutputSettings {..}
 
 data Configuration = Configuration
@@ -90,7 +90,7 @@ instance HasCodec Configuration where
 data LoopConfiguration = LoopConfiguration
   { loopConfigRunConfiguration :: !RunConfiguration,
     loopConfigGitignore :: !(Maybe Bool),
-    loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
+    loopConfigOutputConfiguration :: !OutputConfiguration
   }
   deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec LoopConfiguration)
@@ -102,9 +102,15 @@ instance HasCodec LoopConfiguration where
         eitherCodec (codec <?> "A bare command without any extra configuration") $
           object "LoopConfiguration" $
             LoopConfiguration
-              <$> requiredField "run" "run configuration for this loop" .= loopConfigRunConfiguration
+              <$> parseAlternative
+                (requiredField "run" "run configuration for this loop")
+                runConfigurationObjectCodec
+                .= loopConfigRunConfiguration
               <*> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= loopConfigGitignore
-              <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
+              <*> parseAlternative
+                (requiredField "output" "output configuration for this loop")
+                outputConfigurationObjectCodec
+                .= loopConfigOutputConfiguration
     where
       f = \case
         Left s -> makeLoopConfiguration (CommandArgs s)
@@ -121,7 +127,7 @@ makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigRunConfiguration = makeRunConfiguration c,
       loopConfigGitignore = Nothing,
-      loopConfigOutputConfiguration = Nothing
+      loopConfigOutputConfiguration = emptyOutputConfiguration
     }
 
 data RunConfiguration = RunConfiguration
@@ -135,11 +141,14 @@ data RunConfiguration = RunConfiguration
 instance HasCodec RunConfiguration where
   codec =
     named "RunConfiguration" $
-      object "RunConfiguration" $
-        RunConfiguration
-          <$> commandObjectCodec .= runConfigCommand
-          <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= runConfigExtraEnv
-          <*> optionalField "working-dir" "where the process will be run" .= runConfigWorkingDir
+      object "RunConfiguration" runConfigurationObjectCodec
+
+runConfigurationObjectCodec :: JSONObjectCodec RunConfiguration
+runConfigurationObjectCodec =
+  RunConfiguration
+    <$> commandObjectCodec .= runConfigCommand
+    <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= runConfigExtraEnv
+    <*> optionalField "working-dir" "where the process will be run" .= runConfigWorkingDir
 
 makeRunConfiguration :: Command -> RunConfiguration
 makeRunConfiguration c =
@@ -158,9 +167,12 @@ data OutputConfiguration = OutputConfiguration
 instance HasCodec OutputConfiguration where
   codec =
     named "OutputConfiguration" $
-      object "OutputConfiguration" $
-        OutputConfiguration
-          <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
+      object "OutputConfiguration" outputConfigurationObjectCodec
+
+outputConfigurationObjectCodec :: JSONObjectCodec OutputConfiguration
+outputConfigurationObjectCodec =
+  OutputConfiguration
+    <$> optionalField "clear" "whether to clear the screen runs" .= outputConfigClear
 
 instance Semigroup OutputConfiguration where
   (<>) oc1 oc2 =
