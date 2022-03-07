@@ -44,7 +44,7 @@ See `feedback-test --help` for more details.
 |----|-|-|-|-|
 | Indication of command starting | ✔️ | ✔️ | C | C |
 | Indication of time | ✔️ | C | C | C |
-| Clear screen between feedback | ✔️ | C | C | ✔️ |
+| Clear screen between feedback | ✔️ | C | C | C |
 | Gitignore-aware | ✔️ | ✖️ | ✔️ | ✖ |
 | Named feedback loops | ✔️ | ✖️ | ✖ | ✖ |
 | Configurable feedback loops | ✔️ | ✔️ | ✖ | ✖ |

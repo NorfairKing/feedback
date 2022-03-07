@@ -41,7 +41,7 @@ runFeedbackLoop =
     -- 0.1 second debouncing, 0.001 was too little
     let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
     FS.withManagerConf conf $ \watchManager -> do
-      eventFilter <- mkEventFilter here
+      eventFilter <- mkEventFilter here loopSettingFilterSettings
       stopListeningAction <-
         FS.watchTree
           watchManager
@@ -54,9 +54,9 @@ runFeedbackLoop =
         (outputWorker loopSettingOutputSettings outputChan)
       stopListeningAction
 
-mkEventFilter :: Path Abs Dir -> IO (FS.Event -> Bool)
-mkEventFilter here = do
-  mGitFiles <- gitLsFiles here
+mkEventFilter :: Path Abs Dir -> FilterSettings -> IO (FS.Event -> Bool)
+mkEventFilter here FilterSettings {..} = do
+  mGitFiles <- if filterSettingGitingore then gitLsFiles here else pure Nothing
   pure $ \event ->
     standardEventFilter here event
       && maybe True (eventPath event `S.member`) mGitFiles

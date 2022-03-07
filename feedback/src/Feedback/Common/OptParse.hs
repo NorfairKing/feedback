@@ -27,8 +27,27 @@ import Path.IO
 import Paths_feedback
 
 data LoopSettings = LoopSettings
-  { loopSettingRunSettings :: !RunSettings,
+  { loopSettingFilterSettings :: !FilterSettings,
+    loopSettingRunSettings :: !RunSettings,
     loopSettingOutputSettings :: !OutputSettings
+  }
+  deriving (Show, Eq, Generic)
+
+combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
+combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
+  let filterSettingGitingore = fromMaybe True loopConfigGitignore
+  let loopSettingFilterSettings = FilterSettings {..}
+  let runSettingCommand = loopConfigCommand
+  let runSettingExtraEnv = loopConfigExtraEnv
+  runSettingWorkingDir <- mapM resolveDir' loopConfigWorkingDir
+
+  let loopSettingRunSettings = RunSettings {..}
+  let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
+  let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
+  pure LoopSettings {..}
+
+data FilterSettings = FilterSettings
+  { filterSettingGitingore :: !Bool
   }
   deriving (Show, Eq, Generic)
 
@@ -38,17 +57,6 @@ data RunSettings = RunSettings
     runSettingWorkingDir :: !(Maybe (Path Abs Dir))
   }
   deriving (Show, Eq, Generic)
-
-combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
-combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
-  let runSettingCommand = loopConfigCommand
-  let runSettingExtraEnv = loopConfigExtraEnv
-  runSettingWorkingDir <- mapM resolveDir' loopConfigWorkingDir
-
-  let loopSettingRunSettings = RunSettings {..}
-  let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
-  let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
-  pure LoopSettings {..}
 
 data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
@@ -76,6 +84,7 @@ instance HasCodec Configuration where
 
 data LoopConfiguration = LoopConfiguration
   { loopConfigCommand :: !Command,
+    loopConfigGitignore :: !(Maybe Bool),
     loopConfigExtraEnv :: !(Map String String),
     loopConfigWorkingDir :: !(Maybe FilePath),
     loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
@@ -91,6 +100,7 @@ instance HasCodec LoopConfiguration where
           object "LoopConfiguration" $
             LoopConfiguration
               <$> commandObjectCodec .= loopConfigCommand
+              <*> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= loopConfigGitignore
               <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= loopConfigExtraEnv
               <*> optionalField "working-dir" "where the process will be run" .= loopConfigWorkingDir
               <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
@@ -108,6 +118,7 @@ makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigCommand = c,
+      loopConfigGitignore = Nothing,
       loopConfigExtraEnv = M.empty,
       loopConfigWorkingDir = Nothing,
       loopConfigOutputConfiguration = Nothing
