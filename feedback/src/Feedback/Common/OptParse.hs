@@ -37,11 +37,9 @@ combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> Lo
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
   let filterSettingGitingore = fromMaybe True loopConfigGitignore
   let loopSettingFilterSettings = FilterSettings {..}
-  let runSettingCommand = loopConfigCommand
-  let runSettingExtraEnv = loopConfigExtraEnv
-  runSettingWorkingDir <- mapM resolveDir' loopConfigWorkingDir
 
-  let loopSettingRunSettings = RunSettings {..}
+  loopSettingRunSettings <- combineToRunSettings loopConfigRunConfiguration
+
   let outputConfig = liftA2 (<>) loopConfigOutputConfiguration mDefaultOutputConfig
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   pure LoopSettings {..}
@@ -57,6 +55,13 @@ data RunSettings = RunSettings
     runSettingWorkingDir :: !(Maybe (Path Abs Dir))
   }
   deriving (Show, Eq, Generic)
+
+combineToRunSettings :: RunConfiguration -> IO RunSettings
+combineToRunSettings RunConfiguration {..} = do
+  let runSettingCommand = runConfigCommand
+  let runSettingExtraEnv = runConfigExtraEnv
+  runSettingWorkingDir <- mapM resolveDir' runConfigWorkingDir
+  pure RunSettings {..}
 
 data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
@@ -83,10 +88,8 @@ instance HasCodec Configuration where
         <*> optionalField "output" "default output configuration" .= configOutputConfiguration
 
 data LoopConfiguration = LoopConfiguration
-  { loopConfigCommand :: !Command,
+  { loopConfigRunConfiguration :: !RunConfiguration,
     loopConfigGitignore :: !(Maybe Bool),
-    loopConfigExtraEnv :: !(Map String String),
-    loopConfigWorkingDir :: !(Maybe FilePath),
     loopConfigOutputConfiguration :: !(Maybe OutputConfiguration)
   }
   deriving stock (Show, Eq, Generic)
@@ -99,17 +102,16 @@ instance HasCodec LoopConfiguration where
         eitherCodec (codec <?> "A bare command without any extra configuration") $
           object "LoopConfiguration" $
             LoopConfiguration
-              <$> commandObjectCodec .= loopConfigCommand
+              <$> requiredField "run" "run configuration for this loop" .= loopConfigRunConfiguration
               <*> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= loopConfigGitignore
-              <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= loopConfigExtraEnv
-              <*> optionalField "working-dir" "where the process will be run" .= loopConfigWorkingDir
               <*> optionalField "output" "output configuration for this loop" .= loopConfigOutputConfiguration
     where
       f = \case
         Left s -> makeLoopConfiguration (CommandArgs s)
         Right loopConfig -> loopConfig
       g loopConfig =
-        let c = loopConfigCommand loopConfig
+        let runConfig = loopConfigRunConfiguration loopConfig
+            c = runConfigCommand runConfig
          in case c of
               CommandArgs cmd | loopConfig == makeLoopConfiguration c -> Left cmd
               _ -> Right loopConfig
@@ -117,11 +119,34 @@ instance HasCodec LoopConfiguration where
 makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
-    { loopConfigCommand = c,
+    { loopConfigRunConfiguration = makeRunConfiguration c,
       loopConfigGitignore = Nothing,
-      loopConfigExtraEnv = M.empty,
-      loopConfigWorkingDir = Nothing,
       loopConfigOutputConfiguration = Nothing
+    }
+
+data RunConfiguration = RunConfiguration
+  { runConfigCommand :: !Command,
+    runConfigExtraEnv :: !(Map String String),
+    runConfigWorkingDir :: !(Maybe FilePath)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec RunConfiguration)
+
+instance HasCodec RunConfiguration where
+  codec =
+    named "RunConfiguration" $
+      object "RunConfiguration" $
+        RunConfiguration
+          <$> commandObjectCodec .= runConfigCommand
+          <*> optionalFieldWithOmittedDefault "env" M.empty "extra environment variables to set" .= runConfigExtraEnv
+          <*> optionalField "working-dir" "where the process will be run" .= runConfigWorkingDir
+
+makeRunConfiguration :: Command -> RunConfiguration
+makeRunConfiguration c =
+  RunConfiguration
+    { runConfigCommand = c,
+      runConfigExtraEnv = M.empty,
+      runConfigWorkingDir = Nothing
     }
 
 data OutputConfiguration = OutputConfiguration
