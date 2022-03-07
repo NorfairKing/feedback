@@ -45,7 +45,7 @@ See `feedback-test --help` for more details.
 | Indication of command starting | ✔️ | ✔️ | C | C |
 | Indication of time | ✔️ | C | C | C |
 | Clear screen between feedback | ✔️ | C | C | ✔️ |
-| Gitignore-aware | 🚧 | ✖️ | ✔️ | ✖ |
+| Gitignore-aware | ✔️ | ✖️ | ✔️ | ✖ |
 | Named feedback loops | ✔️ | ✖️ | ✖ | ✖ |
 | Configurable feedback loops | ✔️ | ✔️ | ✖ | ✖ |
 | Cancelling previous runs that aren't done yet | ✔️ | ✔️ | ✔️ | ✖ |
@@ -53,6 +53,8 @@ See `feedback-test --help` for more details.
 | CI integration | ✔️ | C | C | C |
 | Indication of how long the loop took | ✔️ | C | C | C |
 | Shell integration (Commands with pipes "just work") | ✔️ | ✔️ | ✔️ | C |
+| Declare Env vars for configured loops | ✔️ | C | C | C |
+| Declare working directory for configured loops | ✔️ | C | C | C |
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself

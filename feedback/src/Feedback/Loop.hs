@@ -5,8 +5,15 @@
 module Feedback.Loop where
 
 import Control.Monad
+import Data.Conduit
+import Data.Conduit.Binary as CB (lines)
+import qualified Data.Conduit.Combinators as C
+import Data.Conduit.Process.Typed (createSource)
 import Data.List
+import Data.Set
+import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import Data.Word
 import Feedback.Common.OptParse
 import Feedback.Common.Output
@@ -17,6 +24,7 @@ import Path
 import Path.IO
 import System.Exit
 import System.FSNotify as FS
+import System.Process.Typed as Typed
 import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
@@ -33,11 +41,12 @@ runFeedbackLoop =
     -- 0.1 second debouncing, 0.001 was too little
     let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
     FS.withManagerConf conf $ \watchManager -> do
+      eventFilter <- mkEventFilter here
       stopListeningAction <-
         FS.watchTree
           watchManager
           (fromAbsDir here) -- Where to watch
-          (eventFilter here)
+          eventFilter
           $ \event -> do
             writeChan eventChan event
       race_
@@ -45,8 +54,34 @@ runFeedbackLoop =
         (outputWorker loopSettingOutputSettings outputChan)
       stopListeningAction
 
-eventFilter :: Path Abs Dir -> FS.Event -> Bool
-eventFilter here fsEvent =
+mkEventFilter :: Path Abs Dir -> IO (FS.Event -> Bool)
+mkEventFilter here = do
+  mGitFiles <- gitLsFiles here
+  pure $ \event ->
+    standardEventFilter here event
+      && maybe True (eventPath event `S.member`) mGitFiles
+
+gitLsFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
+gitLsFiles here = do
+  let processConfig = setStdout createSource $ shell "git ls-files"
+  process <- startProcess processConfig
+  ec <- waitExitCode process
+  case ec of
+    ExitFailure _ -> pure Nothing
+    ExitSuccess ->
+      fmap Just $
+        runConduit $
+          getStdout process
+            .| CB.lines
+            .| C.concatMap TE.decodeUtf8'
+            .| C.map T.unpack
+            .| C.concatMap (parseRelFile :: FilePath -> Maybe (Path Rel File))
+            .| C.map (here </>)
+            .| C.map fromAbsFile
+            .| C.foldMap S.singleton
+
+standardEventFilter :: Path Abs Dir -> FS.Event -> Bool
+standardEventFilter here fsEvent =
   and
     [ -- It's not one of those files that vim makes
       (filename <$> parseAbsFile (eventPath fsEvent)) /= Just [relfile|4913|],
