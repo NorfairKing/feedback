@@ -27,27 +27,20 @@ import Path.IO
 import Paths_feedback
 
 data LoopSettings = LoopSettings
-  { loopSettingFilterSettings :: !FilterSettings,
-    loopSettingRunSettings :: !RunSettings,
+  { loopSettingRunSettings :: !RunSettings,
+    loopSettingFilterSettings :: !FilterSettings,
     loopSettingOutputSettings :: !OutputSettings
   }
   deriving (Show, Eq, Generic)
 
 combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
-  let filterSettingGitingore = fromMaybe True loopConfigGitignore
-  let loopSettingFilterSettings = FilterSettings {..}
-
   loopSettingRunSettings <- combineToRunSettings loopConfigRunConfiguration
+  let loopSettingFilterSettings = combineToFilterSettings loopConfigFilterConfiguration
 
   let outputConfig = maybe loopConfigOutputConfiguration (<> loopConfigOutputConfiguration) mDefaultOutputConfig
   let loopSettingOutputSettings = combineToOutputSettings flagOutputFlags outputConfig
   pure LoopSettings {..}
-
-data FilterSettings = FilterSettings
-  { filterSettingGitingore :: !Bool
-  }
-  deriving (Show, Eq, Generic)
 
 data RunSettings = RunSettings
   { runSettingCommand :: !Command,
@@ -67,6 +60,16 @@ data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
   }
   deriving (Show, Eq, Generic)
+
+data FilterSettings = FilterSettings
+  { filterSettingGitingore :: !Bool
+  }
+  deriving (Show, Eq, Generic)
+
+combineToFilterSettings :: FilterConfiguration -> FilterSettings
+combineToFilterSettings FilterConfiguration {..} =
+  let filterSettingGitingore = fromMaybe True filterConfigGitignore
+   in FilterSettings {..}
 
 combineToOutputSettings :: OutputFlags -> OutputConfiguration -> OutputSettings
 combineToOutputSettings OutputFlags {..} mConf =
@@ -89,7 +92,7 @@ instance HasCodec Configuration where
 
 data LoopConfiguration = LoopConfiguration
   { loopConfigRunConfiguration :: !RunConfiguration,
-    loopConfigGitignore :: !(Maybe Bool),
+    loopConfigFilterConfiguration :: !FilterConfiguration,
     loopConfigOutputConfiguration :: !OutputConfiguration
   }
   deriving stock (Show, Eq, Generic)
@@ -106,7 +109,10 @@ instance HasCodec LoopConfiguration where
                 (requiredField "run" "run configuration for this loop")
                 runConfigurationObjectCodec
                 .= loopConfigRunConfiguration
-              <*> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= loopConfigGitignore
+              <*> parseAlternative
+                (requiredField "filter" "filter configuration for this loop")
+                filterConfigurationObjectCodec
+                .= loopConfigFilterConfiguration
               <*> parseAlternative
                 (requiredField "output" "output configuration for this loop")
                 outputConfigurationObjectCodec
@@ -126,7 +132,7 @@ makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
     { loopConfigRunConfiguration = makeRunConfiguration c,
-      loopConfigGitignore = Nothing,
+      loopConfigFilterConfiguration = emptyFilterConfiguration,
       loopConfigOutputConfiguration = emptyOutputConfiguration
     }
 
@@ -156,6 +162,28 @@ makeRunConfiguration c =
     { runConfigCommand = c,
       runConfigExtraEnv = M.empty,
       runConfigWorkingDir = Nothing
+    }
+
+data FilterConfiguration = FilterConfiguration
+  { filterConfigGitignore :: !(Maybe Bool)
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving (FromJSON, ToJSON) via (Autodocodec FilterConfiguration)
+
+instance HasCodec FilterConfiguration where
+  codec =
+    named "FilterConfiguration" $
+      object "FilterConfiguration" filterConfigurationObjectCodec
+
+filterConfigurationObjectCodec :: JSONObjectCodec FilterConfiguration
+filterConfigurationObjectCodec =
+  FilterConfiguration
+    <$> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= filterConfigGitignore
+
+emptyFilterConfiguration :: FilterConfiguration
+emptyFilterConfiguration =
+  FilterConfiguration
+    { filterConfigGitignore = Nothing
     }
 
 data OutputConfiguration = OutputConfiguration
