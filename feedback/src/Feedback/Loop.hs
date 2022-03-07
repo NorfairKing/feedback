@@ -56,10 +56,17 @@ runFeedbackLoop =
 
 mkEventFilter :: Path Abs Dir -> FilterSettings -> IO (FS.Event -> Bool)
 mkEventFilter here FilterSettings {..} = do
-  mGitFiles <- if filterSettingGitingore then gitLsFiles here else pure Nothing
+  mGitFiles <-
+    if filterSettingGitingore
+      then gitLsFiles here
+      else pure Nothing
+  mFindFiles <- mapM (filesFromFindArgs here) filterSettingFind
   pure $ \event ->
-    standardEventFilter here event
-      && maybe True (eventPath event `S.member`) mGitFiles
+    and
+      [ standardEventFilter here event,
+        maybe True (eventPath event `S.member`) mGitFiles,
+        maybe True (eventPath event `S.member`) mFindFiles
+      ]
 
 gitLsFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
 gitLsFiles here = do
@@ -79,6 +86,24 @@ gitLsFiles here = do
             .| C.map (here </>)
             .| C.map fromAbsFile
             .| C.foldMap S.singleton
+
+filesFromFindArgs :: Path Abs Dir -> String -> IO (Set FilePath)
+filesFromFindArgs here args = do
+  let processConfig = setStdout createSource $ shell $ "find " <> args
+  process <- startProcess processConfig
+  ec <- waitExitCode process
+  case ec of
+    ExitFailure _ -> die $ "Find failed: " <> show ec
+    ExitSuccess ->
+      runConduit $
+        getStdout process
+          .| CB.lines
+          .| C.concatMap TE.decodeUtf8'
+          .| C.map T.unpack
+          .| C.concatMap (parseRelFile :: FilePath -> Maybe (Path Rel File))
+          .| C.map (here </>)
+          .| C.map fromAbsFile
+          .| C.foldMap S.singleton
 
 standardEventFilter :: Path Abs Dir -> FS.Event -> Bool
 standardEventFilter here fsEvent =

@@ -62,13 +62,15 @@ data OutputSettings = OutputSettings
   deriving (Show, Eq, Generic)
 
 data FilterSettings = FilterSettings
-  { filterSettingGitingore :: !Bool
+  { filterSettingGitingore :: !Bool,
+    filterSettingFind :: !(Maybe String)
   }
   deriving (Show, Eq, Generic)
 
 combineToFilterSettings :: FilterConfiguration -> FilterSettings
 combineToFilterSettings FilterConfiguration {..} =
   let filterSettingGitingore = fromMaybe True filterConfigGitignore
+      filterSettingFind = filterConfigFind
    in FilterSettings {..}
 
 combineToOutputSettings :: OutputFlags -> OutputConfiguration -> OutputSettings
@@ -165,7 +167,8 @@ makeRunConfiguration c =
     }
 
 data FilterConfiguration = FilterConfiguration
-  { filterConfigGitignore :: !(Maybe Bool)
+  { filterConfigGitignore :: !(Maybe Bool),
+    filterConfigFind :: !(Maybe String)
   }
   deriving stock (Show, Eq, Generic)
   deriving (FromJSON, ToJSON) via (Autodocodec FilterConfiguration)
@@ -179,11 +182,13 @@ filterConfigurationObjectCodec :: JSONObjectCodec FilterConfiguration
 filterConfigurationObjectCodec =
   FilterConfiguration
     <$> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= filterConfigGitignore
+    <*> optionalField "find" "arguments for the 'find' command to find files to be notified about" .= filterConfigFind
 
 emptyFilterConfiguration :: FilterConfiguration
 emptyFilterConfiguration =
   FilterConfiguration
-    { filterConfigGitignore = Nothing
+    { filterConfigGitignore = Nothing,
+      filterConfigFind = Nothing
     }
 
 data OutputConfiguration = OutputConfiguration
