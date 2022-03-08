@@ -24,6 +24,7 @@ library
       Feedback.Common.Output
       Feedback.Common.Process
       Feedback.Loop
+      Feedback.Loop.Filter
       Feedback.Loop.OptParse
       Feedback.Test
       Feedback.Test.OptParse
