@@ -17,7 +17,6 @@ library:
   - autodocodec-yaml
   - bytestring
   - conduit
-  - conduit-extra
   - containers
   - cursor
   - envparse

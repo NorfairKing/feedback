@@ -1,15 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Feedback.Loop where
 
 import Control.Monad
 import Data.Conduit
-import Data.Conduit.Binary as CB (lines)
 import qualified Data.Conduit.Combinators as C
-import Data.Conduit.Process.Typed (createSource)
 import Data.List
+import Data.Maybe
 import Data.Set
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -30,18 +30,19 @@ import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
 
 runFeedbackLoop :: IO ()
-runFeedbackLoop =
+runFeedbackLoop = do
   -- The outer loop happens here, before 'getLoopSettings'
   -- so that the loop can be the thing that's being worked on as well.
+  here <- getCurrentDir
+  mStdinFiles <- getStdinFiles here
   forever $ do
     LoopSettings {..} <- getLoopSettings
     eventChan <- newChan
     outputChan <- newChan
-    here <- getCurrentDir
     -- 0.1 second debouncing, 0.001 was too little
     let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
     FS.withManagerConf conf $ \watchManager -> do
-      eventFilter <- mkEventFilter here loopSettingFilterSettings
+      eventFilter <- mkEventFilter here mStdinFiles loopSettingFilterSettings
       stopListeningAction <-
         FS.watchTree
           watchManager
@@ -54,56 +55,66 @@ runFeedbackLoop =
         (outputWorker loopSettingOutputSettings outputChan)
       stopListeningAction
 
-mkEventFilter :: Path Abs Dir -> FilterSettings -> IO (FS.Event -> Bool)
-mkEventFilter here FilterSettings {..} = do
+getStdinFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
+getStdinFiles here = do
+  isTerminal <- hIsTerminalDevice stdin
+  if isTerminal
+    then pure Nothing
+    else
+      (Just <$> handleFileSet here stdin)
+        `catch` (\(_ :: IOException) -> pure Nothing)
+
+mkEventFilter :: Path Abs Dir -> Maybe (Set FilePath) -> FilterSettings -> IO (FS.Event -> Bool)
+mkEventFilter here mStdinFiles FilterSettings {..} = do
+  let mFilter mSet event = maybe True (eventPath event `S.member`) mSet
+  let stdinFilter = mFilter mStdinFiles
+  mFindFiles <- mapM (filesFromFindArgs here) filterSettingFind
+  let findFilter = mFilter mFindFiles
   mGitFiles <-
     if filterSettingGitingore
       then gitLsFiles here
       else pure Nothing
-  mFindFiles <- mapM (filesFromFindArgs here) filterSettingFind
-  pure $ \event ->
-    and
-      [ standardEventFilter here event,
-        maybe True (eventPath event `S.member`) mGitFiles,
-        maybe True (eventPath event `S.member`) mFindFiles
-      ]
+  let gitFilter = mFilter mGitFiles
+  let standardFilter = standardEventFilter here
+  pure $
+    if isJust mStdinFiles
+      then stdinFilter
+      else
+        if isJust mFindFiles
+          then findFilter
+          else combineFilters [standardFilter, gitFilter]
+
+combineFilters :: [FS.Event -> Bool] -> FS.Event -> Bool
+combineFilters filters event = all ($ event) filters
 
 gitLsFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
 gitLsFiles here = do
-  let processConfig = setStdout createSource $ shell "git ls-files"
+  let processConfig = setStdout createPipe $ shell "git ls-files"
   process <- startProcess processConfig
   ec <- waitExitCode process
   case ec of
     ExitFailure _ -> pure Nothing
-    ExitSuccess ->
-      fmap Just $
-        runConduit $
-          getStdout process
-            .| CB.lines
-            .| C.concatMap TE.decodeUtf8'
-            .| C.map T.unpack
-            .| C.concatMap (parseRelFile :: FilePath -> Maybe (Path Rel File))
-            .| C.map (here </>)
-            .| C.map fromAbsFile
-            .| C.foldMap S.singleton
+    ExitSuccess -> Just <$> handleFileSet here (getStdout process)
 
 filesFromFindArgs :: Path Abs Dir -> String -> IO (Set FilePath)
 filesFromFindArgs here args = do
-  let processConfig = setStdout createSource $ shell $ "find " <> args
+  let processConfig = setStdout createPipe $ shell $ "find " <> args
   process <- startProcess processConfig
   ec <- waitExitCode process
   case ec of
     ExitFailure _ -> die $ "Find failed: " <> show ec
-    ExitSuccess ->
-      runConduit $
-        getStdout process
-          .| CB.lines
-          .| C.concatMap TE.decodeUtf8'
-          .| C.map T.unpack
-          .| C.concatMap (parseRelFile :: FilePath -> Maybe (Path Rel File))
-          .| C.map (here </>)
-          .| C.map fromAbsFile
-          .| C.foldMap S.singleton
+    ExitSuccess -> handleFileSet here (getStdout process)
+
+handleFileSet :: Path Abs Dir -> Handle -> IO (Set FilePath)
+handleFileSet here h =
+  runConduit $
+    C.sourceHandle h
+      .| C.linesUnboundedAscii
+      .| C.concatMap TE.decodeUtf8'
+      .| C.map T.unpack
+      .| C.mapM (resolveFile here)
+      .| C.map fromAbsFile
+      .| C.foldMap S.singleton
 
 standardEventFilter :: Path Abs Dir -> FS.Event -> Bool
 standardEventFilter here fsEvent =
