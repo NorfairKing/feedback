@@ -64,6 +64,8 @@ in
       paths = attrValues final.feedbackReleasePackages;
     };
 
+  feedback = final.feedbackRelease;
+
   haskellPackages =
     previous.haskellPackages.override (
       old:
