@@ -102,24 +102,22 @@ data LoopConfiguration = LoopConfiguration
 
 instance HasCodec LoopConfiguration where
   codec =
-    named "LoopConfiguration" $
-      dimapCodec f g $
-        eitherCodec (codec <?> "A bare command without any extra configuration") $
-          object "LoopConfiguration" $
-            LoopConfiguration
-              <$> parseAlternative
-                (requiredField "run" "run configuration for this loop")
-                runConfigurationObjectCodec
-                .= loopConfigRunConfiguration
-              <*> parseAlternative
-                (requiredField "filter" "filter configuration for this loop")
-                filterConfigurationObjectCodec
-                .= loopConfigFilterConfiguration
-              <*> parseAlternative
-                (requiredField "output" "output configuration for this loop")
-                outputConfigurationObjectCodec
-                .= loopConfigOutputConfiguration
+    named
+      "LoopConfiguration"
+      ( dimapCodec f g $
+          eitherCodec (codec <?> "A bare command without any extra configuration") $
+            object "LoopConfiguration" loopConfigurationObjectCodec
+      )
+      <??> loopConfigDocs
     where
+      loopConfigDocs =
+        [ "A LoopConfiguration specifies an entire feedback loop.",
+          "",
+          "It consists of three parts:",
+          "* Filter Configuration: Which files to watch",
+          "* Run Configuration: What to do when those files change",
+          "* Output Configuration: What to see"
+        ]
       f = \case
         Left s -> makeLoopConfiguration (CommandArgs s)
         Right loopConfig -> loopConfig
@@ -129,6 +127,22 @@ instance HasCodec LoopConfiguration where
          in case c of
               CommandArgs cmd | loopConfig == makeLoopConfiguration c -> Left cmd
               _ -> Right loopConfig
+
+loopConfigurationObjectCodec :: JSONObjectCodec LoopConfiguration
+loopConfigurationObjectCodec =
+  LoopConfiguration
+    <$> parseAlternative
+      (requiredField "run" "run configuration for this loop")
+      runConfigurationObjectCodec
+      .= loopConfigRunConfiguration
+    <*> parseAlternative
+      (requiredField "filter" "filter configuration for this loop")
+      filterConfigurationObjectCodec
+      .= loopConfigFilterConfiguration
+    <*> parseAlternative
+      (requiredField "output" "output configuration for this loop")
+      outputConfigurationObjectCodec
+      .= loopConfigOutputConfiguration
 
 makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
@@ -181,7 +195,7 @@ instance HasCodec FilterConfiguration where
 filterConfigurationObjectCodec :: JSONObjectCodec FilterConfiguration
 filterConfigurationObjectCodec =
   FilterConfiguration
-    <$> optionalField "gitignore" "whether to ignore files that are not in the git repo" .= filterConfigGitignore
+    <$> optionalField "gitignore" "whether to ignore files that are not in the git repo\nConcretely, this uses `git ls-files` to find files that are in the repo, so files that have been added but are also ignored by .gitignore will still be watched." .= filterConfigGitignore
     <*> optionalField "find" "arguments for the 'find' command to find files to be notified about" .= filterConfigFind
 
 emptyFilterConfiguration :: FilterConfiguration
