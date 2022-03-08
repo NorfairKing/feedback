@@ -12,21 +12,16 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-  - async
   - autodocodec
   - autodocodec-yaml
-  - bytestring
   - conduit
   - containers
-  - cursor
   - envparse
   - fsnotify
-  - mtl
   - optparse-applicative
   - path
   - path-io
   - pretty-show
-  - process
   - safe-coloured-text
   - safe-coloured-text-terminfo
   - text

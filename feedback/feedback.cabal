@@ -33,22 +33,17 @@ library
   hs-source-dirs:
       src
   build-depends:
-      async
-    , autodocodec
+      autodocodec
     , autodocodec-yaml
     , base >=4.7 && <5
-    , bytestring
     , conduit
     , containers
-    , cursor
     , envparse
     , fsnotify
-    , mtl
     , optparse-applicative
     , path
     , path-io
     , pretty-show
-    , process
     , safe-coloured-text
     , safe-coloured-text-terminfo
     , text
