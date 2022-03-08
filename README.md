@@ -55,6 +55,8 @@ See `feedback-test --help` for more details.
 | Shell integration (Commands with pipes "just work") | ✔️ | ✔️ | ✔️ | C |
 | Declare Env vars for configured loops | ✔️ | C | C | C |
 | Declare working directory for configured loops | ✔️ | C | C | C |
+| Arbitrary "files to watch" filters | ✔️ | ✔️ | ✔️ | C |
+| Stdin-based "files to watch' filters | ✔️ | C | C | ✔️ |
 
 * ✔️: Supported
 * C: Possible but you have to write some code yourself
