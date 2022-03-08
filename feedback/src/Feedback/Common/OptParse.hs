@@ -329,7 +329,7 @@ parseCommandFlags =
                 metavar "COMMAND"
               ]
           )
-   in unwords <$> some commandArg
+   in unwords <$> many commandArg
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
