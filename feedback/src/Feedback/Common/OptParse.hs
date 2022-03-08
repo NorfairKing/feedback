@@ -189,13 +189,22 @@ data FilterConfiguration = FilterConfiguration
 
 instance HasCodec FilterConfiguration where
   codec =
-    named "FilterConfiguration" $
-      object "FilterConfiguration" filterConfigurationObjectCodec
+    named
+      "FilterConfiguration"
+      ( object "FilterConfiguration" filterConfigurationObjectCodec
+      )
+      <??> filterConfigurationDocs
+    where
+      filterConfigurationDocs =
+        [ "By default, standard filters are applied and,",
+          "if in a git repository, only files in the git repository are considered.",
+          "If either 'git' or 'find' configuration are specified, only those are used."
+        ]
 
 filterConfigurationObjectCodec :: JSONObjectCodec FilterConfiguration
 filterConfigurationObjectCodec =
   FilterConfiguration
-    <$> optionalField "gitignore" "whether to ignore files that are not in the git repo\nConcretely, this uses `git ls-files` to find files that are in the repo, so files that have been added but are also ignored by .gitignore will still be watched." .= filterConfigGitignore
+    <$> optionalField "git" "whether to ignore files that are not in the git repo\nConcretely, this uses `git ls-files` to find files that are in the repo, so files that have been added but are also ignored by .gitignore will still be watched." .= filterConfigGitignore
     <*> optionalField "find" "arguments for the 'find' command to find files to be notified about" .= filterConfigFind
 
 emptyFilterConfiguration :: FilterConfiguration
