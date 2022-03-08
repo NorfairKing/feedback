@@ -20,8 +20,7 @@ putTimedChunks :: TerminalCapabilities -> [Chunk] -> IO ()
 putTimedChunks terminalCapabilities chunks = do
   now <- getCurrentTime
   let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
-  putChunksWith terminalCapabilities $ timeChunk : " " : chunks
-  putStrLn ""
+  putChunksWith terminalCapabilities $ timeChunk : " " : chunks ++ ["\n"]
 
 indicatorChunk :: String -> Chunk
 indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"

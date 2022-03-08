@@ -10,3 +10,5 @@
     name: "Use unless"
 - ignore:
     name: "Use record patterns"
+- ignore:
+    name: "Use getChar"

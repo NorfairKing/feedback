@@ -17,6 +17,7 @@ import Path
 import Path.IO
 import System.Exit
 import System.FSNotify as FS
+import System.IO (hGetChar)
 import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
@@ -47,6 +48,9 @@ runFeedbackLoop = do
         (outputWorker loopSettingOutputSettings outputChan)
       stopListeningAction
 
+data RestartEvent = FSEvent !FS.Event | StdinEvent !Char
+  deriving (Show, Eq)
+
 processWorker :: RunSettings -> Chan FS.Event -> Chan Output -> IO ()
 processWorker runSettings eventChan outputChan = do
   let sendOutput = writeChan outputChan
@@ -56,8 +60,12 @@ processWorker runSettings eventChan outputChan = do
   processHandle <- startProcessHandle runSettings
   -- Output that the process has started
   sendOutput $ OutputProcessStarted runSettings
+
   -- Either wait for it to finish or wait for an event
-  eventOrDone <- race (readChan eventChan) (waitProcessHandle processHandle)
+  eventOrDone <-
+    race
+      (waitForEvent eventChan)
+      (waitProcessHandle processHandle)
   case eventOrDone of
     -- If An event happened first, output it and kill the process.
     Left event -> do
@@ -80,11 +88,23 @@ processWorker runSettings eventChan outputChan = do
       end <- getMonotonicTimeNSec
       sendOutput $ OutputProcessExited ec (end - start)
       -- Output the event that made the rerun happen
-      event <- readChan eventChan
+      event <- waitForEvent eventChan
       sendOutput $ OutputEvent event
 
+waitForEvent :: Chan FS.Event -> IO RestartEvent
+waitForEvent eventChan = do
+  isTerminal <- hIsTerminalDevice stdin
+  if isTerminal
+    then do
+      hSetBuffering stdin NoBuffering
+      either id id
+        <$> race
+          (StdinEvent <$> hGetChar stdin)
+          (FSEvent <$> readChan eventChan)
+    else FSEvent <$> readChan eventChan
+
 data Output
-  = OutputEvent !FS.Event
+  = OutputEvent !RestartEvent
   | OutputKilling
   | OutputKilled
   | OutputProcessStarted !RunSettings
@@ -98,16 +118,18 @@ outputWorker OutputSettings {..} outputChan = do
   forever $ do
     event <- readChan outputChan
     case event of
-      OutputEvent fsEvent -> do
-        put
-          [ indicatorChunk "event:",
-            case fsEvent of
-              Added {} -> fore green " added    "
-              Modified {} -> fore yellow " modified "
-              Removed {} -> fore red " removed  "
-              Unknown {} -> " unknown  ",
-            chunk $ T.pack $ eventPath fsEvent
-          ]
+      OutputEvent restartEvent -> do
+        put $
+          indicatorChunk "event:" : case restartEvent of
+            FSEvent fsEvent ->
+              [ case fsEvent of
+                  Added {} -> fore green " added    "
+                  Modified {} -> fore yellow " modified "
+                  Removed {} -> fore red " removed  "
+                  Unknown {} -> " unknown  ",
+                chunk $ T.pack $ eventPath fsEvent
+              ]
+            StdinEvent c -> [chunk $ T.pack $ show c]
       OutputKilling -> put [indicatorChunk "killing"]
       OutputKilled -> put [indicatorChunk "killed"]
       OutputProcessStarted runSettings -> do
