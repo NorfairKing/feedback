@@ -53,12 +53,19 @@ startingLines RunSettings {..} =
             ]
             | workdir <- maybeToList runSettingWorkingDir
           ],
-          [ [ indicatorChunk "extra env:",
-              " ",
-              chunk $ T.pack $ show $ M.toList runSettingExtraEnv
-            ]
-            | not (null runSettingExtraEnv)
-          ]
+          if null runSettingExtraEnv
+            then []
+            else
+              [indicatorChunk "extra env:"] :
+              map
+                ( \(k, v) ->
+                    [ "  ",
+                      fore blue $ chunk (T.pack k),
+                      ": ",
+                      fore blue $ chunk (T.pack v)
+                    ]
+                )
+                (M.toList runSettingExtraEnv)
         ]
 
 exitCodeChunks :: ExitCode -> [Chunk]
