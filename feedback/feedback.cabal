@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.6.
+-- This file has been generated from package.yaml by hpack version 0.34.5.
 --
 -- see: https://github.com/sol/hpack
 
@@ -60,7 +60,7 @@ executable feedback
       Paths_feedback
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -main-is Loop.main
+  ghc-options: -threaded -rtsopts "-with-rtsopts=-N3 -I0" -main-is Loop.main
   build-depends:
       base >=4.7 && <5
     , feedback

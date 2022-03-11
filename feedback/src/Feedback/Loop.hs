@@ -18,6 +18,7 @@ import Path.IO
 import System.Exit
 import System.FSNotify as FS
 import System.IO (hGetChar)
+import System.Mem (performGC)
 import Text.Colour
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 import UnliftIO
@@ -60,6 +61,9 @@ processWorker runSettings eventChan outputChan = do
   processHandle <- startProcessHandle runSettings
   -- Output that the process has started
   sendOutput $ OutputProcessStarted runSettings
+
+  -- So we don't need idle gc
+  performGC
 
   -- Either wait for it to finish or wait for an event
   eventOrDone <-
