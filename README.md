@@ -63,12 +63,3 @@ See `feedback-test --help` for more details.
 * 🚧: Under development
 * ✖️: Not supported
 * ?: I don't know.
-
-
-
-## Someday/maybe ideas
-
-* I want to have a good idea of the current state of things:
-  * Is it blocking on CPU, on memory, on network?
-* Manually activate a run
-* Manually cancel and re-activate a run
