@@ -1,4 +1,4 @@
-cabal-version: 1.12
+cabal-version: 2.2
 
 -- This file has been generated from package.yaml by hpack version 0.34.5.
 --
@@ -11,7 +11,7 @@ bug-reports:    https://github.com/NorfairKing/feedback/issues
 author:         Tom Sydney Kerckhove
 maintainer:     syd@cs-syd.eu
 copyright:      Copyright (c) 2022 Tom Sydney Kerckhove
-license:        MIT
+license:        GPL-3.0-only
 build-type:     Simple
 
 source-repository head

@@ -1,10 +1,10 @@
-name:                feedback
-version:             0.0.0.0
-github:              "NorfairKing/feedback"
-license:             MIT
-author:              "Tom Sydney Kerckhove"
-maintainer:          "syd@cs-syd.eu"
-copyright:           "Copyright (c) 2022 Tom Sydney Kerckhove"
+name: feedback
+version: 0.0.0.0
+github: "NorfairKing/feedback"
+license: GPL-3.0-only
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
+copyright: "Copyright (c) 2022 Tom Sydney Kerckhove"
 
 dependencies:
 - base >= 4.7 && < 5
