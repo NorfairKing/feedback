@@ -93,7 +93,8 @@ instance HasCodec Configuration where
         <*> optionalField "output" "default output configuration" .= configOutputConfiguration
 
 data LoopConfiguration = LoopConfiguration
-  { loopConfigRunConfiguration :: !RunConfiguration,
+  { loopConfigDescription :: !(Maybe String),
+    loopConfigRunConfiguration :: !RunConfiguration,
     loopConfigFilterConfiguration :: !FilterConfiguration,
     loopConfigOutputConfiguration :: !OutputConfiguration
   }
@@ -131,7 +132,8 @@ instance HasCodec LoopConfiguration where
 loopConfigurationObjectCodec :: JSONObjectCodec LoopConfiguration
 loopConfigurationObjectCodec =
   LoopConfiguration
-    <$> parseAlternative
+    <$> optionalField "description" "description of when to use this feedback loop" .= loopConfigDescription
+    <*> parseAlternative
       (requiredField "run" "run configuration for this loop")
       runConfigurationObjectCodec
       .= loopConfigRunConfiguration
@@ -147,7 +149,8 @@ loopConfigurationObjectCodec =
 makeLoopConfiguration :: Command -> LoopConfiguration
 makeLoopConfiguration c =
   LoopConfiguration
-    { loopConfigRunConfiguration = makeRunConfiguration c,
+    { loopConfigDescription = Nothing,
+      loopConfigRunConfiguration = makeRunConfiguration c,
       loopConfigFilterConfiguration = emptyFilterConfiguration,
       loopConfigOutputConfiguration = emptyOutputConfiguration
     }

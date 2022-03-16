@@ -1,6 +1,6 @@
 cabal-version: 2.2
 
--- This file has been generated from package.yaml by hpack version 0.34.5.
+-- This file has been generated from package.yaml by hpack version 0.34.6.
 --
 -- see: https://github.com/sol/hpack
 
@@ -30,6 +30,8 @@ library
       Feedback.Test.OptParse
   other-modules:
       Paths_feedback
+  autogen-modules:
+      Paths_feedback
   hs-source-dirs:
       src
   build-depends:
@@ -45,6 +47,7 @@ library
     , path-io
     , pretty-show
     , safe-coloured-text
+    , safe-coloured-text-layout
     , safe-coloured-text-terminfo
     , text
     , time
@@ -58,6 +61,8 @@ executable feedback
   other-modules:
       Test
       Paths_feedback
+  autogen-modules:
+      Paths_feedback
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts "-with-rtsopts=-N3 -I0" -main-is Loop.main
@@ -70,6 +75,8 @@ executable feedback-test
   main-is: Test.hs
   other-modules:
       Loop
+      Paths_feedback
+  autogen-modules:
       Paths_feedback
   hs-source-dirs:
       app

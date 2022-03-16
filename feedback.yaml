@@ -1,4 +1,19 @@
 loops:
-  ci: nix-build ci.nix --no-out-link
-  install: stack install --fast --exec='feedback --help' --no-nix --system-ghc --with-hpack hpack
-  test: stack build --fast --exec='feedback-test --debug ci' --no-nix --system-ghc --with-hpack hpack
+  ci:
+    description: Run all of CI
+    command: nix-build ci.nix --no-out-link
+
+  install:
+    description: Work on `feedback` and its `--help` page.
+    script: |
+      set -x
+      stack install :feedback \
+        --fast --no-nix --system-ghc --with-hpack hpack
+      ~/.local/bin/feedback --help
+
+  test:
+    description: Work on `feedback-test`
+    script: |
+      stack install :feedback-test \
+        --fast --no-nix --system-ghc --with-hpack hpack
+      ~/.local/bin/feedback-test --debug ci
