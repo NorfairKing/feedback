@@ -5,6 +5,7 @@ license: GPL-3.0-only
 author: "Tom Sydney Kerckhove"
 maintainer: "syd@cs-syd.eu"
 copyright: "Copyright (c) 2022 Tom Sydney Kerckhove"
+synopsis: Declarative feedback loop manager 
 
 dependencies:
 - base >= 4.7 && < 5
