@@ -9,5 +9,5 @@ pkgs.haskell.lib.buildStackProject {
     (import sources.niv { }).niv
     zlib
   ] ++ pre-commit.tools;
-  shellHook = pre-commit.run.shellHook;
+  shellHook = pre-commit.run.shellHook + pkgs.feedback.shellHook;
 }

@@ -62,6 +62,9 @@ in
     final.symlinkJoin {
       name = "feedback-release";
       paths = attrValues final.feedbackReleasePackages;
+      passthru.shellHook = ''
+        ${final.feedbackReleasePackages.feedback}/bin/feedback
+      '';
     };
 
   feedback = final.feedbackRelease;

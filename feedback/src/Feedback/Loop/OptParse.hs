@@ -70,7 +70,8 @@ prettyConfiguration mConf = case mConf of
         ( map
             (uncurry loopConfigLine)
             (M.toList (configLoops conf))
-        )
+        ),
+      [fore blue "Run ", fore yellow "feedback loopname", fore blue " to activate a feedback loop."]
     ]
 
 loopConfigLine :: String -> LoopConfiguration -> [Chunk]
