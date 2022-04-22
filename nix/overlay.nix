@@ -38,6 +38,7 @@ in
               "--ghc-options=-Wredundant-constraints"
               "--ghc-options=-Wcpp-undef"
               "--ghc-options=-Werror"
+              "--ghc-options=-optP-Wno-nonportable-include-path" # For macos
             ];
             # Ugly hack because we can't just add flags to the 'test' invocation.
             # Show test output as we go, instead of all at once afterwards.
