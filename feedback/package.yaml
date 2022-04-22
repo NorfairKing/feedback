@@ -39,6 +39,7 @@ executables:
     ghc-options:
     - -threaded
     - -rtsopts
+    - -optP-Wno-nonportable-include-path # For macos
     # -N3: Use three threads, because we only need three threads:
     # 1. FS Notify listener
     # 2. 'processWorker'
