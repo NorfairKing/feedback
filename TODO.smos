@@ -1,0 +1,21 @@
+version: 2.0.0
+value:
+- Configurable debouncing
+- Configurable postponing with --postpone
+- Enter to rerun immediately
+- header: On-busy configuration
+  contents: |-
+    options:
+
+    - Queue
+    - Restart (current default)
+    - Do-nothing
+    - Send a given signal
+- header: Extension-based filter
+  contents: This is simple enough to accomodate
+- Make it possible to use polling
+- header: Make it possible to not use a shell
+  contents: also to use  adifferent shell?
+- Make it possible to turn off default ignores
+- Show info if feedback is called without args
+- Autocompletion for the loops, assuming we use the default config
