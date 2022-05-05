@@ -4,7 +4,6 @@
 module Feedback.Loop.OptParse where
 
 import Control.Monad
-import Data.List
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Feedback.Common.OptParse
@@ -48,7 +47,7 @@ combineToSettings flags@Flags {..} environment mConf = do
           pure config
   case mLoopConfig of
     Nothing -> do
-      putChunks $ intercalate ["\n"] $ prettyConfiguration mConf
+      putChunks $ concatMap (<> ["\n"]) $ prettyConfiguration mConf
       exitSuccess
     Just loopConfig -> do
       loopSets <-
