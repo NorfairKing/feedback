@@ -49,12 +49,14 @@ library
     , pretty-show
     , safe-coloured-text
     , safe-coloured-text-layout
-    , safe-coloured-text-terminfo
     , text
     , time
     , typed-process
     , unliftio
     , yaml
+  if !os(windows)
+    build-depends:
+        safe-coloured-text-terminfo
   default-language: Haskell2010
 
 executable feedback

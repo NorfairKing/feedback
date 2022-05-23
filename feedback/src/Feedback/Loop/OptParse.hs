@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -11,7 +12,11 @@ import Feedback.Common.Output
 import System.Exit
 import Text.Colour
 import Text.Colour.Layout
-import Text.Colour.Term
+#if MIN_VERSION_safe_coloured_text_terminfo
+import Text.Colour.Term (putChunks)
+#else
+import Text.Colour (putChunksWith)
+#endif
 import Text.Show.Pretty (pPrint)
 
 getLoopSettings :: IO LoopSettings
@@ -47,7 +52,12 @@ combineToSettings flags@Flags {..} environment mConf = do
           pure config
   case mLoopConfig of
     Nothing -> do
-      putChunks $ concatMap (<> ["\n"]) $ prettyConfiguration mConf
+#if MIN_VERSION_safe_coloured_text_terminfo
+      putChunks
+#else
+      putChunksWith WithoutColours
+#endif
+         $ concatMap (<> ["\n"]) $ prettyConfiguration mConf
       exitSuccess
     Just loopConfig -> do
       loopSets <-

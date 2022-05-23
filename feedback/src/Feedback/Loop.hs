@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -20,7 +21,11 @@ import System.FSNotify as FS
 import System.IO (hGetChar)
 import System.Mem (performGC)
 import Text.Colour
+#if MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
+#else
+import Text.Colour.Capabilities (TerminalCapabilities(..))
+#endif
 import UnliftIO
 
 runFeedbackLoop :: IO ()
@@ -117,7 +122,11 @@ data Output
 
 outputWorker :: OutputSettings -> Chan Output -> IO ()
 outputWorker OutputSettings {..} outputChan = do
+#if MIN_VERSION_safe_coloured_text_terminfo
   terminalCapabilities <- getTerminalCapabilitiesFromEnv
+#else
+  let terminalCapabilities = WithoutColours
+#endif
   let put = putTimedChunks terminalCapabilities
   forever $ do
     event <- readChan outputChan
