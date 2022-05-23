@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -10,12 +11,17 @@ import Feedback.Common.Output
 import Feedback.Common.Process
 import Feedback.Test.OptParse
 import GHC.Clock (getMonotonicTimeNSec)
+
+#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
+#else
+import Text.Colour.Capabilities (TerminalCapabilities(..))
+#endif
 
 runFeedbackTest :: IO ()
 runFeedbackTest = do
   TestSettings {..} <- getSettings
-  terminalCapabilities <- getTerminalCapabilitiesFromEnv
+  terminalCapabilities <- getTermCaps
   let put = putTimedChunks terminalCapabilities
   forM_ (M.toList testSettingLoops) $ \(loopName, LoopSettings {..}) -> do
     put [indicatorChunk "testing ", " ", loopNameChunk loopName]
@@ -26,3 +32,10 @@ runFeedbackTest = do
     put $ exitCodeChunks ec
     let duration = end - start
     put $ durationChunks duration
+  where
+
+#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+    getTermCaps = getTerminalCapabilitiesFromEnv
+#else
+    getTermCaps = WithoutColours
+#endif

@@ -25,12 +25,15 @@ library:
   - pretty-show
   - safe-coloured-text
   - safe-coloured-text-layout
-  - safe-coloured-text-terminfo
   - text
   - time
   - typed-process
   - unliftio
   - yaml
+  when:
+    - condition: '!os(windows)'
+      dependencies:
+        - safe-coloured-text-terminfo
 
 executables:
   feedback:
