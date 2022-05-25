@@ -37,5 +37,5 @@ runFeedbackTest = do
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
     getTermCaps = getTerminalCapabilitiesFromEnv
 #else
-    getTermCaps = WithoutColours
+    getTermCaps = pure WithoutColours
 #endif
