@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -19,12 +20,21 @@ import Path.IO
 import System.Exit
 import System.FSNotify as FS
 import System.Process.Typed as Typed
+#ifdef MIN_VERSION_Win32
+import System.Win32.MinTTY (isMinTTYHandle)
+import System.Win32.Types (withHandleToHANDLE)
+#endif
 import UnliftIO
 
 getStdinFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
 getStdinFiles here = do
   isTerminal <- hIsTerminalDevice stdin
-  if isTerminal
+#ifdef MIN_VERSION_Win32
+  isMinTTY <- withHandleToHANDLE stdin isMinTTYHandle
+#else
+  let isMinTTY = False
+#endif
+  if isTerminal || isMinTTY
     then pure Nothing
     else
       (Just <$> handleFileSet here stdin)

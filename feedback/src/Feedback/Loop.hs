@@ -20,6 +20,10 @@ import System.Exit
 import System.FSNotify as FS
 import System.IO (hGetChar)
 import System.Mem (performGC)
+#ifdef MIN_VERSION_Win32
+import System.Win32.MinTTY (isMinTTYHandle)
+import System.Win32.Types (withHandleToHANDLE)
+#endif
 import Text.Colour
 #if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
@@ -103,7 +107,12 @@ processWorker runSettings eventChan outputChan = do
 waitForEvent :: Chan FS.Event -> IO RestartEvent
 waitForEvent eventChan = do
   isTerminal <- hIsTerminalDevice stdin
-  if isTerminal
+#ifdef MIN_VERSION_Win32
+  isMinTTY <- withHandleToHANDLE stdin isMinTTYHandle
+#else
+  let isMinTTY = False
+#endif
+  if isTerminal || isMinTTY
     then do
       hSetBuffering stdin NoBuffering
       either id id
