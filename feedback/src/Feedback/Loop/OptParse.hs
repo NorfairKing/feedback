@@ -12,7 +12,7 @@ import Feedback.Common.Output
 import System.Exit
 import Text.Colour
 import Text.Colour.Layout
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Term (putChunks)
 #endif
 import Text.Show.Pretty (pPrint)
@@ -63,7 +63,7 @@ combineToSettings flags@Flags {..} environment mConf = do
       pure loopSets
   where
 
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
     put = putChunks
 #else
     put = putChunksWith WithoutColours

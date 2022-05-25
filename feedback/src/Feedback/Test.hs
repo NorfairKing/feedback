@@ -12,7 +12,7 @@ import Feedback.Common.Process
 import Feedback.Test.OptParse
 import GHC.Clock (getMonotonicTimeNSec)
 
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 #else
 import Text.Colour.Capabilities (TerminalCapabilities(..))
@@ -34,7 +34,7 @@ runFeedbackTest = do
     put $ durationChunks duration
   where
 
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
     getTermCaps = getTerminalCapabilitiesFromEnv
 #else
     getTermCaps = WithoutColours

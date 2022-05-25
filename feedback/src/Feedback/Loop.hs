@@ -25,7 +25,7 @@ import System.Win32.MinTTY (isMinTTYHandle)
 import System.Win32.Types (withHandleToHANDLE)
 #endif
 import Text.Colour
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 #else
 import Text.Colour.Capabilities (TerminalCapabilities(..))
@@ -160,7 +160,7 @@ outputWorker OutputSettings {..} outputChan = do
         put $ durationChunks nanosecs
   where
 
-#if MIN_VERSION_safe_coloured_text_terminfo(0,0,0)
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
     getTermCaps = getTerminalCapabilitiesFromEnv
 #else
     getTermCaps = pure WithoutColours
