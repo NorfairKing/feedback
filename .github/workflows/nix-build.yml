@@ -1,0 +1,44 @@
+name: "Nix Build"
+on:
+  pull_request:
+  push:
+    branches:
+      - development
+      - master
+jobs:
+  hooks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3.0.2
+    - uses: cachix/install-nix-action@v17
+    - uses: cachix/cachix-action@v10
+      with:
+        name: feedback
+        extraPullNames: validity,sydtest,autodocodec
+        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+    - run: nix-build ci.nix -A pre-commit-check
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3.0.2
+    - uses: cachix/install-nix-action@v17
+    - uses: cachix/cachix-action@v10
+      with:
+        name: feedback
+        extraPullNames: validity,sydtest,autodocodec
+        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+    - run: nix-build ci.nix -A shell
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3.0.2
+    - uses: cachix/install-nix-action@v17
+    - uses: cachix/cachix-action@v10
+      with:
+        name: feedback
+        extraPullNames: validity,sydtest,autodocodec
+        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
+    - run: nix-build ci.nix -A release
+
