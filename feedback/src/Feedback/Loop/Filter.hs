@@ -29,16 +29,18 @@ import UnliftIO
 getStdinFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
 getStdinFiles here = do
   isTerminal <- hIsTerminalDevice stdin
-#ifdef MIN_VERSION_Win32
-  isMinTTY <- withHandleToHANDLE stdin isMinTTYHandle
-#else
-  let isMinTTY = False
-#endif
+  isMinTTY <- getMinTTY
   if isTerminal || isMinTTY
     then pure Nothing
     else
       (Just <$> handleFileSet here stdin)
         `catch` (\(_ :: IOException) -> pure Nothing)
+  where
+#ifdef MIN_VERSION_Win32
+      getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
+#else
+      getMinTTY = pure False
+#endif
 
 mkEventFilter :: Path Abs Dir -> Maybe (Set FilePath) -> FilterSettings -> IO (FS.Event -> Bool)
 mkEventFilter here mStdinFiles FilterSettings {..} = do

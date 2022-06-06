@@ -107,11 +107,7 @@ processWorker runSettings eventChan outputChan = do
 waitForEvent :: Chan FS.Event -> IO RestartEvent
 waitForEvent eventChan = do
   isTerminal <- hIsTerminalDevice stdin
-#ifdef MIN_VERSION_Win32
-  isMinTTY <- withHandleToHANDLE stdin isMinTTYHandle
-#else
-  let isMinTTY = False
-#endif
+  isMinTTY <- getMinTTY
   if isTerminal || isMinTTY
     then do
       hSetBuffering stdin NoBuffering
@@ -120,6 +116,12 @@ waitForEvent eventChan = do
           (StdinEvent <$> hGetChar stdin)
           (FSEvent <$> readChan eventChan)
     else FSEvent <$> readChan eventChan
+  where
+#ifdef MIN_VERSION_Win32
+      getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
+#else
+      getMinTTY = pure False
+#endif
 
 data Output
   = OutputEvent !RestartEvent
