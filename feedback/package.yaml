@@ -31,7 +31,11 @@ library:
   - unliftio
   - yaml
   when:
-    - condition: '!os(windows)'
+  - condition: os(windows)
+    then:
+      dependencies:
+        - Win32 >= 2.13.2
+    else:
       dependencies:
         - safe-coloured-text-terminfo
 

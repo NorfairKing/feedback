@@ -54,7 +54,10 @@ library
     , typed-process
     , unliftio
     , yaml
-  if !os(windows)
+  if os(windows)
+    build-depends:
+        Win32 >=2.13.2
+  else
     build-depends:
         safe-coloured-text-terminfo
   default-language: Haskell2010
