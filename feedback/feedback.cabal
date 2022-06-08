@@ -39,6 +39,7 @@ library
       autodocodec
     , autodocodec-yaml
     , base >=4.7 && <5
+    , bytestring
     , conduit
     , containers
     , envparse

@@ -6,8 +6,12 @@
 
 module Feedback.Loop.Filter where
 
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.Char8 as LB8
 import Data.Conduit
 import qualified Data.Conduit.Combinators as C
+import qualified Data.Conduit.List as CL
 import Data.List
 import Data.Maybe
 import Data.Set
@@ -36,6 +40,7 @@ getStdinFiles here = do
       (Just <$> handleFileSet here stdin)
         `catch` (\(_ :: IOException) -> pure Nothing)
   where
+
 #ifdef MIN_VERSION_Win32
       getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
 #else
@@ -67,32 +72,43 @@ combineFilters filters event = all ($ event) filters
 
 gitLsFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
 gitLsFiles here = do
-  let processConfig = setStdout createPipe $ shell "git ls-files"
-  process <- startProcess processConfig
-  ec <- waitExitCode process
-  case ec of
-    ExitFailure _ -> pure Nothing
-    ExitSuccess -> Just <$> handleFileSet here (getStdout process)
+  let processConfig = shell "git ls-files"
+  (ec, out) <- readProcessStdout processConfig
+  set <- bytesFileSet here out
+  pure $ case ec of
+    ExitFailure _ -> Nothing
+    ExitSuccess -> Just set
 
 filesFromFindArgs :: Path Abs Dir -> String -> IO (Set FilePath)
 filesFromFindArgs here args = do
   let processConfig = setStdout createPipe $ shell $ "find " <> args
-  process <- startProcess processConfig
-  ec <- waitExitCode process
+  (ec, out) <- readProcessStdout processConfig
+  set <- bytesFileSet here out
   case ec of
     ExitFailure _ -> die $ "Find failed: " <> show ec
-    ExitSuccess -> handleFileSet here (getStdout process)
+    ExitSuccess -> pure set
+
+bytesFileSet :: Path Abs Dir -> LB.ByteString -> IO (Set FilePath)
+bytesFileSet here lb =
+  runConduit $
+    CL.sourceList (LB8.lines lb)
+      .| C.map LB.toStrict
+      .| fileSetBuilder here
 
 handleFileSet :: Path Abs Dir -> Handle -> IO (Set FilePath)
 handleFileSet here h =
   runConduit $
     C.sourceHandle h
       .| C.linesUnboundedAscii
-      .| C.concatMap TE.decodeUtf8'
-      .| C.map T.unpack
-      .| C.mapM (resolveFile here)
-      .| C.map fromAbsFile
-      .| C.foldMap S.singleton
+      .| fileSetBuilder here
+
+fileSetBuilder :: Path Abs Dir -> ConduitT ByteString Void IO (Set FilePath)
+fileSetBuilder here =
+  C.concatMap TE.decodeUtf8'
+    .| C.map T.unpack
+    .| C.mapM (resolveFile here)
+    .| C.map fromAbsFile
+    .| C.foldMap S.singleton
 
 standardEventFilter :: Path Abs Dir -> FS.Event -> Bool
 standardEventFilter here fsEvent =

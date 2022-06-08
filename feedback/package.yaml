@@ -15,6 +15,7 @@ library:
   dependencies:
   - autodocodec
   - autodocodec-yaml
+  - bytestring
   - conduit
   - containers
   - envparse
