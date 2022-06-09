@@ -18,7 +18,7 @@ import Text.Printf
 
 putTimedChunks :: TerminalCapabilities -> [Chunk] -> IO ()
 putTimedChunks terminalCapabilities chunks = do
-  now <- getCurrentTime
+  now <- getZonedTime
   let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
   putChunksWith terminalCapabilities $ timeChunk : " " : chunks ++ ["\n"]
 
