@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "NorfairKing",
         "repo": "autodocodec",
-        "rev": "38bd4865ff2dd40d342141b7fde9319f835d98c6",
-        "sha256": "1g4rjq3jb6wpk1x71d7777zhdf2bfps0l25lmw2zn3695siv5k66",
+        "rev": "a60fbd4db121c0529f9ceb68c58c289daa693db2",
+        "sha256": "123yb0hncbjdnykzs6mklyk5j5d0kmw47k5gn6icawbak5r9z3a9",
         "type": "tarball",
-        "url": "https://github.com/NorfairKing/autodocodec/archive/38bd4865ff2dd40d342141b7fde9319f835d98c6.tar.gz",
+        "url": "https://github.com/NorfairKing/autodocodec/archive/a60fbd4db121c0529f9ceb68c58c289daa693db2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "gitignore": {
@@ -36,15 +36,15 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "nixos-21.11",
+        "branch": "nixos-22.05",
         "description": "Nix Packages collection",
         "homepage": "",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "cbd40c72b2603ab54e7208f99f9b35fc158bc009",
-        "sha256": "09ffmjs9lwm97p8v8977p319kc8ys2fjnyv08gb99kgbr7gfiyfd",
+        "rev": "d17a56d90ecbd1b8fc908d49598fb854ef188461",
+        "sha256": "04a9ry0kk4qzy622mk3izh4azdp7plf1847mfp3zkn9gk0innswg",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/cbd40c72b2603ab54e7208f99f9b35fc158bc009.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/d17a56d90ecbd1b8fc908d49598fb854ef188461.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "pre-commit-hooks": {
@@ -57,6 +57,42 @@
         "sha256": "16qfrylk41r7gc7g4352hxz7b3vk9w7bc6893apmmr6yy08ra0m9",
         "type": "tarball",
         "url": "https://github.com/cachix/pre-commit-hooks.nix/archive/521a524771a8e93caddaa0ac1d67d03766a8b0b3.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "safe-coloured-text": {
+        "branch": "master",
+        "description": null,
+        "homepage": "https://cs-syd.eu/posts/2021-03-07-safe-coloured-text",
+        "owner": "NorfairKing",
+        "repo": "safe-coloured-text",
+        "rev": "d1a727998fa58ecf38022906b552d33e57e3f308",
+        "sha256": "139ihi0hixmbnk4i5karmgc26fmqh8kzp37rcv7x5jlw9lwdqp8n",
+        "type": "tarball",
+        "url": "https://github.com/NorfairKing/safe-coloured-text/archive/d1a727998fa58ecf38022906b552d33e57e3f308.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "sydtest": {
+        "branch": "master",
+        "description": "A modern testing framework for Haskell with good defaults and advanced testing features.",
+        "homepage": "",
+        "owner": "NorfairKing",
+        "repo": "sydtest",
+        "rev": "cf1bb414f0c0ce7bbf64659da94b8cd890c9e536",
+        "sha256": "0z6araz20lkgc7q2r5z423hbis4jzvkkqgiawh69wslakqlznxzc",
+        "type": "tarball",
+        "url": "https://github.com/NorfairKing/sydtest/archive/cf1bb414f0c0ce7bbf64659da94b8cd890c9e536.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "validity": {
+        "branch": "master",
+        "description": "Validity and validity-based testing",
+        "homepage": "https://www.youtube.com/watch?v=eIs9qNh17SM",
+        "owner": "NorfairKing",
+        "repo": "validity",
+        "rev": "d88be911a7e2a84f6c089e9269aaed8d10a74acd",
+        "sha256": "088zl9vp7579qj1gqh1j8kb0035zjjp41k1yiww58x57pym200g7",
+        "type": "tarball",
+        "url": "https://github.com/NorfairKing/validity/archive/d88be911a7e2a84f6c089e9269aaed8d10a74acd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
