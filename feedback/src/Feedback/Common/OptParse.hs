@@ -300,7 +300,7 @@ flagsParser =
         [ Env.helpDoc environmentParser,
           "",
           "Configuration file format:",
-          T.unpack (TE.decodeUtf8 (renderColouredSchemaViaCodec @Configuration))
+          T.unpack (renderColouredSchemaViaCodec @Configuration)
         ]
 
 data Flags = Flags

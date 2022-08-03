@@ -37,7 +37,7 @@ library
       src
   build-depends:
       autodocodec
-    , autodocodec-yaml
+    , autodocodec-yaml >=0.2
     , base >=4.7 && <5
     , bytestring
     , conduit

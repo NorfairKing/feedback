@@ -14,7 +14,7 @@ library:
   source-dirs: src
   dependencies:
   - autodocodec
-  - autodocodec-yaml
+  - autodocodec-yaml >= 0.2
   - bytestring
   - conduit
   - containers
