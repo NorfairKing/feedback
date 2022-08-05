@@ -8,23 +8,23 @@ ghc-options:
 
 extra-deps:
 - github: NorfairKing/safe-coloured-text
-  commit: d1a727998fa58ecf38022906b552d33e57e3f308
+  commit: 675cb01fce5f46718416d7746de5b856ed90a63f
   subdirs:
     - safe-coloured-text
     - safe-coloured-text-layout
     - safe-coloured-text-terminfo
 - github: NorfairKing/sydtest
-  commit: cf1bb414f0c0ce7bbf64659da94b8cd890c9e536
+  commit: 130de92053c1c3d60a8f45d509210415ffbea530
   subdirs:
     - sydtest
 - github: NorfairKing/autodocodec
-  commit: a60fbd4db121c0529f9ceb68c58c289daa693db2
+  commit: 98135d2b24c4c52f56f53c6650a169aeec61c7f1
   subdirs:
     - autodocodec
     - autodocodec-schema
     - autodocodec-yaml
 - github: NorfairKing/validity
-  commit: d88be911a7e2a84f6c089e9269aaed8d10a74acd
+  commit: 8373ac5f0f02ad66f1b83c9bf572290430e84062
   subdirs:
     - genvalidity
     - genvalidity-aeson

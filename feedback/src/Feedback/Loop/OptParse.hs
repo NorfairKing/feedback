@@ -13,7 +13,7 @@ import System.Exit
 import Text.Colour
 import Text.Colour.Layout
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
-import Text.Colour.Term (putChunks)
+import Text.Colour.Term (putChunksLocale)
 #endif
 import Text.Show.Pretty (pPrint)
 
@@ -64,9 +64,9 @@ combineToSettings flags@Flags {..} environment mConf = do
   where
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
-    put = putChunks
+    put = putChunksLocale
 #else
-    put = putChunksWith WithoutColours
+    put = putChunksLocaleWith WithoutColours
 #endif
 
 prettyConfiguration :: Maybe Configuration -> [[Chunk]]

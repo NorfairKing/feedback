@@ -15,7 +15,6 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 import Data.Version
 import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
@@ -300,7 +299,7 @@ flagsParser =
         [ Env.helpDoc environmentParser,
           "",
           "Configuration file format:",
-          T.unpack (TE.decodeUtf8 (renderColouredSchemaViaCodec @Configuration))
+          T.unpack (renderColouredSchemaViaCodec @Configuration)
         ]
 
 data Flags = Flags
