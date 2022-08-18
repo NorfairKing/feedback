@@ -38,25 +38,36 @@ runFeedbackLoop = do
   -- so that the loop can be the thing that's being worked on as well.
   here <- getCurrentDir
   mStdinFiles <- getStdinFiles here
+  terminalCapabilities <- getTermCaps
   forever $ do
+    -- We show a 'preparing' chunk before we get the settings because sometimes
+    -- getting the settings can take a while, for example in big repositories.
+    putTimedChunks terminalCapabilities [indicatorChunk "preparing"]
     LoopSettings {..} <- getLoopSettings
-    eventChan <- newChan
-    outputChan <- newChan
     -- 0.1 second debouncing, 0.001 was too little
     let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
     FS.withManagerConf conf $ \watchManager -> do
       eventFilter <- mkEventFilter here mStdinFiles loopSettingFilterSettings
+      eventChan <- newChan
+      outputChan <- newChan
       stopListeningAction <-
         FS.watchTree
           watchManager
           (fromAbsDir here) -- Where to watch
           eventFilter
-          $ \event -> do
-            writeChan eventChan event
+          (writeChan eventChan)
       race_
         (processWorker loopSettingRunSettings eventChan outputChan)
-        (outputWorker loopSettingOutputSettings outputChan)
+        (outputWorker terminalCapabilities loopSettingOutputSettings outputChan)
       stopListeningAction
+
+#ifdef MIN_VERSION_safe_coloured_text_terminfo
+getTermCaps :: IO TerminalCapabilities
+getTermCaps = getTerminalCapabilitiesFromEnv
+#else
+getTermCaps :: IO TerminalCapabilities
+getTermCaps = pure WithoutColours
+#endif
 
 data RestartEvent = FSEvent !FS.Event | StdinEvent !Char
   deriving (Show, Eq)
@@ -131,9 +142,8 @@ data Output
   | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
-outputWorker :: OutputSettings -> Chan Output -> IO ()
-outputWorker OutputSettings {..} outputChan = do
-  terminalCapabilities <- getTermCaps
+outputWorker :: TerminalCapabilities -> OutputSettings -> Chan Output -> IO ()
+outputWorker terminalCapabilities OutputSettings {..} outputChan = do
   let put = putTimedChunks terminalCapabilities
   forever $ do
     event <- readChan outputChan
@@ -160,10 +170,3 @@ outputWorker OutputSettings {..} outputChan = do
       OutputProcessExited ec nanosecs -> do
         put $ exitCodeChunks ec
         put $ durationChunks nanosecs
-  where
-
-#ifdef MIN_VERSION_safe_coloured_text_terminfo
-    getTermCaps = getTerminalCapabilitiesFromEnv
-#else
-    getTermCaps = pure WithoutColours
-#endif

@@ -18,9 +18,9 @@ in
           )
           (old: {
             doBenchmark = true;
-            doHaddock = false;
+            doHaddock = true;
             doCoverage = false;
-            doHoogle = false;
+            doHoogle = true;
             doCheck = false; # Only check the release version.
             hyperlinkSource = false;
             enableLibraryProfiling = false;
