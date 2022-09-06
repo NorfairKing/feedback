@@ -340,7 +340,14 @@ parseCommandFlags =
                 metavar "COMMAND"
               ]
           )
-   in unwords <$> many commandArg
+      escapeChar = \case
+        '"' -> "\\\""
+        '\'' -> "\\\'"
+        c -> [c]
+      quote = ("\"" <>) . (<> "\"") . concatMap escapeChar
+      quoteIfNecessary s = if ' ' `elem` s then quote s else s
+      pieceBackTogether = unwords . map quoteIfNecessary
+   in pieceBackTogether <$> many commandArg
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
