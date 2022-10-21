@@ -58,7 +58,7 @@ makeProcessConfigFor RunSettings {..} = do
   pure $
     setStdout inherit
       . setStderr inherit
-      . setStdin closed -- TODO make this configurable?
+      . setStdin nullStream -- TODO make this configurable?
       . setEnv envForProcess
       . maybe id (setWorkingDir . fromAbsDir) runSettingWorkingDir
       $ shell commandString
