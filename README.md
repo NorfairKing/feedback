@@ -11,23 +11,26 @@ Use the `feedback` command to set up a feedback loop for your work.
 For example, if you are working on a nix build, you might use this feedback loop:
 
 ```
-feedback -- nix-build --no-out-link
+feedback -- nix-build
 ```
+
+Usually `feedback` will correctly figure out which files to watch and which
+files not to watch, but you can also configure this more precisely.
 
 ### Declarative feedback loops
 
 You can declare feedback loops in the `feedback.yaml` configuration file to share them with your team.
-For example, this gives you a [`ci.nix`-based feedback loop](https://cs-syd.eu/posts/2021-04-11-the-ci-nix-pattern):
+For example, this gives you a flake-based feedback loop:
 
-```
+``` yaml
 loops:
-  ci: nix-build ci.nix --no-out-link
+  check: nix flake check -L
 ```
 
 Then you can just run this command, and not have to remember the full incantation:
 
 ```
-feedback ci
+feedback check
 ```
 
 To see the full reference of options of the configuration file, run `feedback --help`.
@@ -37,6 +40,61 @@ To see the full reference of options of the configuration file, run `feedback --
 When sharing feedback loops with team members, it is important that no one breaks another's workflow.
 You can use `feedback-test` to test out the feedback loops in a one-shot manner, so you can check that they still work on CI.
 See `feedback-test --help` for more details.
+
+## Installation
+
+### Try it out
+
+```
+nix run github:NorfairKing/feedback
+```
+
+### Install globally
+
+Add this to your system flake:
+
+``` nix
+{
+  inputs = {
+    feedback.url = "github:NorfairKing/feedback?ref=flake";
+  };
+  outputs = { nixpkgs, feedback, ... }:
+    let system = "x86_64-linux";
+    in {
+      nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+        inherit system;
+        modules = [
+          { environment.systemPackages = [ feedback.packages.${system}.default ];
+        ];
+      }
+    };
+  };
+}
+```
+
+## Hacking
+
+1. Enter a dev shell
+
+   ```
+   $ nix develop
+   ```
+
+2. Start a feedback loop
+
+   ```
+   feedback istall
+   ```
+
+3. Make your changes
+
+4. Make sure CI will pass
+  
+   ```
+   nix flake check
+   ```
+
+5. Make a PR to `development`.
 
 ## Comparison with other tools
 
