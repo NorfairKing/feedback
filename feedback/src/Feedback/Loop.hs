@@ -39,27 +39,28 @@ runFeedbackLoop = do
   here <- getCurrentDir
   mStdinFiles <- getStdinFiles here
   terminalCapabilities <- getTermCaps
-  forever $ do
-    -- We show a 'preparing' chunk before we get the settings because sometimes
-    -- getting the settings can take a while, for example in big repositories.
-    putTimedChunks terminalCapabilities [indicatorChunk "preparing"]
-    LoopSettings {..} <- getLoopSettings
-    -- 0.1 second debouncing, 0.001 was too little
-    let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
-    FS.withManagerConf conf $ \watchManager -> do
-      eventFilter <- mkEventFilter here mStdinFiles loopSettingFilterSettings
-      eventChan <- newChan
-      outputChan <- newChan
-      stopListeningAction <-
-        FS.watchTree
-          watchManager
-          (fromAbsDir here) -- Where to watch
-          eventFilter
-          (writeChan eventChan)
-      race_
-        (processWorker loopSettingRunSettings eventChan outputChan)
-        (outputWorker terminalCapabilities loopSettingOutputSettings outputChan)
-      stopListeningAction
+  let singleIteration = do
+        -- We show a 'preparing' chunk before we get the settings because sometimes
+        -- getting the settings can take a while, for example in big repositories.
+        putTimedChunks terminalCapabilities [indicatorChunk "Preparing"]
+        LoopSettings {..} <- getLoopSettings
+        -- 0.1 second debouncing, 0.001 was too little
+        let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
+        FS.withManagerConf conf $ \watchManager -> do
+          eventFilter <- mkEventFilter here mStdinFiles loopSettingFilterSettings
+          eventChan <- newChan
+          outputChan <- newChan
+          stopListeningAction <-
+            FS.watchTree
+              watchManager
+              (fromAbsDir here) -- Where to watch
+              eventFilter
+              (writeChan eventChan)
+          race_
+            (processWorker loopSettingRunSettings eventChan outputChan)
+            (outputWorker terminalCapabilities loopSettingOutputSettings outputChan)
+          stopListeningAction
+  forever singleIteration `finally` putDone terminalCapabilities
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 getTermCaps :: IO TerminalCapabilities

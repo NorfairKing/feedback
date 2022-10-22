@@ -22,6 +22,9 @@ putTimedChunks terminalCapabilities chunks = do
   let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
   putChunksLocaleWith terminalCapabilities $ timeChunk : " " : chunks ++ ["\n"]
 
+putDone :: TerminalCapabilities -> IO ()
+putDone terminalCapabilities = putTimedChunks terminalCapabilities [indicatorChunk "Done."]
+
 indicatorChunk :: String -> Chunk
 indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"
 
