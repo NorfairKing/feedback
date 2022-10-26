@@ -29,6 +29,7 @@ library:
   - text
   - time
   - typed-process
+  - unix
   - unliftio
   - yaml
   when:

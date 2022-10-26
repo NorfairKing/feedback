@@ -5,6 +5,8 @@
 
 module Feedback.Loop where
 
+import Control.Concurrent (ThreadId, myThreadId)
+import Control.Exception (AsyncException (UserInterrupt))
 import Control.Monad
 import qualified Data.Text as T
 import Data.Word
@@ -20,6 +22,7 @@ import System.Exit
 import System.FSNotify as FS
 import System.IO (hGetChar)
 import System.Mem (performGC)
+import System.Posix.Signals as Signal
 #ifdef MIN_VERSION_Win32
 import System.Win32.MinTTY (isMinTTYHandle)
 import System.Win32.Types (withHandleToHANDLE)
@@ -39,6 +42,11 @@ runFeedbackLoop = do
   here <- getCurrentDir
   mStdinFiles <- getStdinFiles here
   terminalCapabilities <- getTermCaps
+
+  -- Get the threadid for a child process to throw an exception to when it's
+  -- being killed by the user.
+  mainThreadId <- myThreadId
+
   let singleIteration = do
         -- We show a 'preparing' chunk before we get the settings because sometimes
         -- getting the settings can take a while, for example in big repositories.
@@ -57,9 +65,10 @@ runFeedbackLoop = do
               eventFilter
               (writeChan eventChan)
           race_
-            (processWorker loopSettingRunSettings eventChan outputChan)
+            (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
             (outputWorker terminalCapabilities loopSettingOutputSettings outputChan)
           stopListeningAction
+
   forever singleIteration `finally` putDone terminalCapabilities
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
@@ -70,11 +79,13 @@ getTermCaps :: IO TerminalCapabilities
 getTermCaps = pure WithoutColours
 #endif
 
-data RestartEvent = FSEvent !FS.Event | StdinEvent !Char
+data RestartEvent
+  = FSEvent !FS.Event
+  | StdinEvent !Char
   deriving (Show, Eq)
 
-processWorker :: RunSettings -> Chan FS.Event -> Chan Output -> IO ()
-processWorker runSettings eventChan outputChan = do
+processWorker :: ThreadId -> RunSettings -> Chan FS.Event -> Chan Output -> IO ()
+processWorker mainThreadId runSettings eventChan outputChan = do
   let sendOutput = writeChan outputChan
   -- Record starting time
   start <- getMonotonicTimeNSec
@@ -86,35 +97,55 @@ processWorker runSettings eventChan outputChan = do
   -- So we don't need idle gc
   performGC
 
+  -- Make sure we kill the process and wait for it to exit if a user presses C-c
+  -- happens. This is important
+  let killHandler :: Signal.Handler
+      killHandler = CatchOnce $ do
+        stopProcessHandle processHandle
+        _ <- waitProcessHandle processHandle
+        -- Throw a 'UserInterrupt' to the main thread so that the main thread
+        -- can print "Done." after the child processes have exited.
+        throwTo mainThreadId UserInterrupt
+
+  -- Install this kill handler for sigINT only.
+  -- In the case of sigKILL, which we can't really be sure to catch anyway,
+  -- crash harder.
+  _ <- installHandler sigINT killHandler Nothing
+
+  -- If An event happened first, output it and kill the process.
+  let handleEventHappened event = do
+        -- Output the event that has fired
+        sendOutput $ OutputEvent event
+        -- Output that killing will start
+        sendOutput OutputKilling
+        -- Kill the process
+        stopProcessHandle processHandle
+        -- Output that the process has been killed
+        sendOutput OutputKilled
+        -- Wait for the process to finish (should have by now)
+        ec <- waitProcessHandle processHandle
+        -- Record the end time
+        end <- getMonotonicTimeNSec
+        -- Output that the process has finished
+        sendOutput $ OutputProcessExited ec (end - start)
+
+  -- If the process finished first, show the result and wait for an event anyway
+  let handleProcessDone ec = do
+        end <- getMonotonicTimeNSec
+        sendOutput $ OutputProcessExited ec (end - start)
+        -- Output the event that made the rerun happen
+        event <- waitForEvent eventChan
+        sendOutput $ OutputEvent event
+
   -- Either wait for it to finish or wait for an event
   eventOrDone <-
     race
       (waitForEvent eventChan)
       (waitProcessHandle processHandle)
+
   case eventOrDone of
-    -- If An event happened first, output it and kill the process.
-    Left event -> do
-      -- Output the event that has fired
-      sendOutput $ OutputEvent event
-      -- Output that killing will start
-      sendOutput OutputKilling
-      -- Kill the process
-      stopProcessHandle processHandle
-      -- Output that the process has been killed
-      sendOutput OutputKilled
-      -- Wait for the process to finish (should have by now)
-      ec <- waitProcessHandle processHandle
-      -- Record the end time
-      end <- getMonotonicTimeNSec
-      -- Output that the process has finished
-      sendOutput $ OutputProcessExited ec (end - start)
-    -- If the process finished first, show the result and wait for an event anyway
-    Right ec -> do
-      end <- getMonotonicTimeNSec
-      sendOutput $ OutputProcessExited ec (end - start)
-      -- Output the event that made the rerun happen
-      event <- waitForEvent eventChan
-      sendOutput $ OutputEvent event
+    Left event -> handleEventHappened event
+    Right ec -> handleProcessDone ec
 
 waitForEvent :: Chan FS.Event -> IO RestartEvent
 waitForEvent eventChan = do
