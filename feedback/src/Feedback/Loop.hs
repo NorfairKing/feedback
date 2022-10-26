@@ -9,6 +9,7 @@ import Control.Concurrent (ThreadId, myThreadId)
 import Control.Exception (AsyncException (UserInterrupt))
 import Control.Monad
 import qualified Data.Text as T
+import Data.Time
 import Data.Word
 import Feedback.Common.OptParse
 import Feedback.Common.Output
@@ -47,10 +48,10 @@ runFeedbackLoop = do
   -- being killed by the user.
   mainThreadId <- myThreadId
 
-  let singleIteration = do
+  let doSingleLoop loopBegin = do
         -- We show a 'preparing' chunk before we get the settings because sometimes
         -- getting the settings can take a while, for example in big repositories.
-        putTimedChunks terminalCapabilities [indicatorChunk "Preparing"]
+        putTimedChunks terminalCapabilities loopBegin [indicatorChunk "Preparing"]
         LoopSettings {..} <- getLoopSettings
         -- 0.1 second debouncing, 0.001 was too little
         let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
@@ -66,10 +67,14 @@ runFeedbackLoop = do
               (writeChan eventChan)
           race_
             (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
-            (outputWorker terminalCapabilities loopSettingOutputSettings outputChan)
+            (outputWorker terminalCapabilities loopBegin loopSettingOutputSettings outputChan)
           stopListeningAction
+  let singleIteration = do
+        -- Record when the loop began so we can show relative times nicely.
+        loopBegin <- getZonedTime
+        doSingleLoop loopBegin `finally` putDone terminalCapabilities loopBegin
 
-  forever singleIteration `finally` putDone terminalCapabilities
+  forever singleIteration
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 getTermCaps :: IO TerminalCapabilities
@@ -174,9 +179,9 @@ data Output
   | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
-outputWorker :: TerminalCapabilities -> OutputSettings -> Chan Output -> IO ()
-outputWorker terminalCapabilities OutputSettings {..} outputChan = do
-  let put = putTimedChunks terminalCapabilities
+outputWorker :: TerminalCapabilities -> ZonedTime -> OutputSettings -> Chan Output -> IO ()
+outputWorker terminalCapabilities loopBegin OutputSettings {..} outputChan = do
+  let put = putTimedChunks terminalCapabilities loopBegin
   forever $ do
     event <- readChan outputChan
     case event of

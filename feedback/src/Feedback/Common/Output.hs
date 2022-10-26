@@ -16,14 +16,20 @@ import System.Exit
 import Text.Colour
 import Text.Printf
 
-putTimedChunks :: TerminalCapabilities -> [Chunk] -> IO ()
-putTimedChunks terminalCapabilities chunks = do
+putTimedChunks :: TerminalCapabilities -> ZonedTime -> [Chunk] -> IO ()
+putTimedChunks terminalCapabilities loopBegin chunks = do
   now <- getZonedTime
   let timeChunk = fore yellow $ chunk $ T.pack $ formatTime defaultTimeLocale "%H:%M:%S" now
-  putChunksLocaleWith terminalCapabilities $ timeChunk : " " : chunks ++ ["\n"]
 
-putDone :: TerminalCapabilities -> IO ()
-putDone terminalCapabilities = putTimedChunks terminalCapabilities [indicatorChunk "Done."]
+  let relativeTimeStr :: NominalDiffTime -> String
+      relativeTimeStr ndt =
+        let d = realToFrac ndt :: Double
+         in printf "%6.2fs" d
+  let relativeTimeChunk = fore cyan $ chunk $ T.pack $ relativeTimeStr $ diffUTCTime (zonedTimeToUTC now) (zonedTimeToUTC loopBegin)
+  putChunksLocaleWith terminalCapabilities $ timeChunk : " " : relativeTimeChunk : " " : chunks ++ ["\n"]
+
+putDone :: TerminalCapabilities -> ZonedTime -> IO ()
+putDone terminalCapabilities loopBegin = putTimedChunks terminalCapabilities loopBegin [indicatorChunk "Done."]
 
 indicatorChunk :: String -> Chunk
 indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"

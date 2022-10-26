@@ -6,8 +6,8 @@ pkgs.haskell.lib.buildStackProject {
   name = "feedback-shell";
   buildInputs = with pkgs; [
     (import sources.niv { }).niv
-    pkgs.feedback
+    # pkgs.feedback
     zlib
   ] ++ pre-commit.tools;
-  shellHook = pre-commit.run.shellHook + pkgs.feedback.shellHook;
+  # shellHook = pre-commit.run.shellHook + pkgs.feedback.shellHook;
 }
