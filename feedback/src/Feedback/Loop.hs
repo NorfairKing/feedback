@@ -8,6 +8,7 @@ module Feedback.Loop where
 import Control.Concurrent (ThreadId, myThreadId)
 import Control.Exception (AsyncException (UserInterrupt))
 import Control.Monad
+import Data.Set (Set)
 import qualified Data.Text as T
 import Data.Time
 import Data.Word
@@ -56,25 +57,43 @@ runFeedbackLoop = do
         -- 0.1 second debouncing, 0.001 was too little
         let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
         FS.withManagerConf conf $ \watchManager -> do
-          eventFilter <- mkEventFilter here mStdinFiles loopSettingFilterSettings
           eventChan <- newChan
+          stopListeningAction <- startWatching here mStdinFiles loopSettingFilterSettings terminalCapabilities loopBegin watchManager eventChan
           outputChan <- newChan
-          stopListeningAction <-
-            FS.watchTreeChan
-              watchManager
-              (fromAbsDir here) -- Where to watch
-              eventFilter
-              eventChan
           race_
             (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
             (outputWorker terminalCapabilities loopBegin loopSettingOutputSettings outputChan)
-          stopListeningAction
+            `finally` stopListeningAction
   let singleIteration = do
         -- Record when the loop began so we can show relative times nicely.
         loopBegin <- getZonedTime
         doSingleLoop loopBegin `finally` putDone terminalCapabilities loopBegin
 
   forever singleIteration
+
+startWatching ::
+  Path Abs Dir ->
+  Maybe (Set FilePath) ->
+  FilterSettings ->
+  TerminalCapabilities ->
+  ZonedTime ->
+  WatchManager ->
+  Chan FS.Event ->
+  IO StopListening
+startWatching here mStdinFiles filterSettings terminalCapabilities loopBegin watchManager eventChan = do
+  let put = putTimedChunks terminalCapabilities loopBegin
+  put [indicatorChunk "Making filter"]
+  eventFilter <- mkEventFilter here mStdinFiles filterSettings
+  let descendHandler :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO (WalkAction Abs)
+      descendHandler dir subdirs _ =
+        pure $
+          -- Don't descend into hidden directories.
+          WalkExclude $ filter (isHiddenIn dir) subdirs
+      outputWriter :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO StopListening
+      outputWriter dir _ _ = do
+        put [indicatorChunk "Watching", chunk $ T.pack $ fromAbsDir dir]
+        watchDirChan watchManager (fromAbsDir dir) eventFilter eventChan
+  walkDirAccum (Just descendHandler) outputWriter here
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 getTermCaps :: IO TerminalCapabilities

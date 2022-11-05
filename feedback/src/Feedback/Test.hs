@@ -13,6 +13,7 @@ import Feedback.Common.Process
 import Feedback.Test.OptParse
 import GHC.Clock (getMonotonicTimeNSec)
 import Text.Colour.Capabilities (TerminalCapabilities (..))
+
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 #endif
