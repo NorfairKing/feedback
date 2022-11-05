@@ -8,7 +8,6 @@ module Feedback.Loop where
 import Control.Concurrent (ThreadId, myThreadId)
 import Control.Exception (AsyncException (UserInterrupt))
 import Control.Monad
-import Data.Set (Set)
 import qualified Data.Text as T
 import Data.Time
 import Data.Word
@@ -42,7 +41,11 @@ runFeedbackLoop = do
   -- The outer loop happens here, before 'getLoopSettings'
   -- so that the loop can be the thing that's being worked on as well.
   here <- getCurrentDir
-  mStdinFiles <- getStdinFiles here
+
+  -- We must get the stdin filter beforehand, because stdin can only be
+  -- consumed once and we'll want to be able to reread filters below.
+  stdinFilter <- mkStdinFilter here
+
   terminalCapabilities <- getTermCaps
 
   -- Get the threadid for a child process to throw an exception to when it's
@@ -53,17 +56,27 @@ runFeedbackLoop = do
         -- We show a 'preparing' chunk before we get the settings because sometimes
         -- getting the settings can take a while, for example in big repositories.
         putTimedChunks terminalCapabilities loopBegin [indicatorChunk "preparing"]
+
+        -- Get the loop settings within the loop, so that the loop can be
+        -- what is being worked on.
         LoopSettings {..} <- getLoopSettings
-        -- 0.1 second debouncing, 0.001 was too little
-        let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
-        FS.withManagerConf conf $ \watchManager -> do
+
+        FS.withManagerConf FS.defaultConfig $ \watchManager -> do
+          -- Set up watchers for each relevant directory and send the FSNotify
+          -- events down this event channel.
           eventChan <- newChan
-          stopListeningAction <- startWatching here mStdinFiles loopSettingFilterSettings terminalCapabilities loopBegin watchManager eventChan
+          stopListeningAction <- startWatching here stdinFilter loopSettingFilterSettings terminalCapabilities loopBegin watchManager eventChan
+
+          -- At the same time:
+          -- Start the process and send output events through this output channel,
+          -- and
+          -- output the resuls to stdout.
           outputChan <- newChan
           race_
             (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
             (outputWorker terminalCapabilities loopBegin loopSettingOutputSettings outputChan)
             `finally` stopListeningAction
+
   let singleIteration = do
         -- Record when the loop began so we can show relative times nicely.
         loopBegin <- getZonedTime
@@ -73,26 +86,29 @@ runFeedbackLoop = do
 
 startWatching ::
   Path Abs Dir ->
-  Maybe (Set FilePath) ->
+  Filter ->
   FilterSettings ->
   TerminalCapabilities ->
   ZonedTime ->
   WatchManager ->
   Chan FS.Event ->
   IO StopListening
-startWatching here mStdinFiles filterSettings terminalCapabilities loopBegin watchManager eventChan = do
+startWatching here stdinFilter filterSettings terminalCapabilities loopBegin watchManager eventChan = do
   let put = putTimedChunks terminalCapabilities loopBegin
-  put [indicatorChunk "selecting"]
-  eventFilter <- mkEventFilter here mStdinFiles filterSettings
+  put [indicatorChunk "filtering"]
+  f <- (stdinFilter <>) <$> mkCombinedFilter here filterSettings
+  put [indicatorChunk "watching"]
   let descendHandler :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO (WalkAction Abs)
       descendHandler dir subdirs _ =
-        pure $
-          -- Don't descend into hidden directories.
-          WalkExclude $ filter (isHiddenIn dir) subdirs
+        -- Don't descent into hidden directories
+        pure $ WalkExclude $ filter (isHiddenIn dir) subdirs
       outputWriter :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO StopListening
-      outputWriter dir _ _ = do
-        put [indicatorChunk "watching", chunk $ T.pack $ fromAbsDir dir]
-        watchDirChan watchManager (fromAbsDir dir) eventFilter eventChan
+      outputWriter dir _ _ =
+        if filterDirFilter f dir
+          then do
+            let eventFilter fsEvent = maybe False (filterFileFilter f) $ parseAbsFile (eventPath fsEvent)
+            watchDirChan watchManager (fromAbsDir dir) eventFilter eventChan
+          else pure (pure ())
   walkDirAccum (Just descendHandler) outputWriter here
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
@@ -183,13 +199,6 @@ waitForEvent eventChan = do
           (StdinEvent <$> hGetChar stdin)
           (FSEvent <$> readChan eventChan)
     else FSEvent <$> readChan eventChan
-  where
-
-#ifdef MIN_VERSION_Win32
-      getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
-#else
-      getMinTTY = pure False
-#endif
 
 data Output
   = OutputEvent !RestartEvent

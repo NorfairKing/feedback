@@ -13,7 +13,6 @@ import Data.Conduit
 import qualified Data.Conduit.Combinators as C
 import qualified Data.Conduit.List as CL
 import Data.List
-import Data.Maybe
 import Data.Set
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -22,7 +21,6 @@ import Feedback.Common.OptParse
 import Path
 import Path.IO
 import System.Exit
-import System.FSNotify as FS
 import System.Process.Typed as Typed
 #ifdef MIN_VERSION_Win32
 import System.Win32.MinTTY (isMinTTYHandle)
@@ -30,7 +28,51 @@ import System.Win32.Types (withHandleToHANDLE)
 #endif
 import UnliftIO
 
-getStdinFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
+#ifdef MIN_VERSION_Win32
+getMinTTY :: IO Bool
+getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
+#else
+getMinTTY :: IO Bool
+getMinTTY = pure False
+#endif
+
+data Filter = Filter
+  { filterDirFilter :: Path Abs Dir -> Bool,
+    filterFileFilter :: Path Abs File -> Bool
+  }
+
+instance Semigroup Filter where
+  f1 <> f2 =
+    Filter
+      { filterDirFilter = \d -> filterDirFilter f1 d && filterDirFilter f2 d,
+        filterFileFilter = \f -> filterFileFilter f1 f && filterFileFilter f2 f
+      }
+
+instance Monoid Filter where
+  mempty = Filter {filterDirFilter = const True, filterFileFilter = const True}
+  mappend = (<>)
+
+fileSetFilter :: Set (Path Abs File) -> Filter
+fileSetFilter fileSet =
+  let dirSet = S.map parent fileSet
+   in Filter
+        { filterDirFilter = (`S.member` dirSet),
+          filterFileFilter = (`S.member` fileSet)
+        }
+
+mkCombinedFilter :: Path Abs Dir -> FilterSettings -> IO Filter
+mkCombinedFilter here filterSettings =
+  mconcat
+    <$> sequence
+      [ mkGitFilter here filterSettings,
+        mkFindFilter here filterSettings,
+        pure $ standardFilter here
+      ]
+
+mkStdinFilter :: Path Abs Dir -> IO Filter
+mkStdinFilter here = maybe mempty fileSetFilter <$> getStdinFiles here
+
+getStdinFiles :: Path Abs Dir -> IO (Maybe (Set (Path Abs File)))
 getStdinFiles here = do
   isTerminal <- hIsTerminalDevice stdin
   isMinTTY <- getMinTTY
@@ -39,38 +81,16 @@ getStdinFiles here = do
     else
       (Just <$> handleFileSet here stdin)
         `catch` (\(_ :: IOException) -> pure Nothing)
-  where
 
-#ifdef MIN_VERSION_Win32
-      getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
-#else
-      getMinTTY = pure False
-#endif
+mkGitFilter :: Path Abs Dir -> FilterSettings -> IO Filter
+mkGitFilter here FilterSettings {..} = do
+  if filterSettingGitingore
+    then do
+      mGitFiles <- gitLsFiles here
+      pure $ maybe mempty fileSetFilter mGitFiles
+    else pure mempty
 
-mkEventFilter :: Path Abs Dir -> Maybe (Set FilePath) -> FilterSettings -> IO (FS.Event -> Bool)
-mkEventFilter here mStdinFiles FilterSettings {..} = do
-  let mFilter mSet event = maybe True (eventPath event `S.member`) mSet
-  let stdinFilter = mFilter mStdinFiles
-  mFindFiles <- mapM (filesFromFindArgs here) filterSettingFind
-  let findFilter = mFilter mFindFiles
-  mGitFiles <-
-    if filterSettingGitingore
-      then gitLsFiles here
-      else pure Nothing
-  let gitFilter = mFilter mGitFiles
-  let standardFilter = standardEventFilter here
-  pure $
-    if isJust mStdinFiles
-      then stdinFilter
-      else
-        if isJust mFindFiles
-          then findFilter
-          else combineFilters [standardFilter, gitFilter]
-
-combineFilters :: [FS.Event -> Bool] -> FS.Event -> Bool
-combineFilters filters event = all ($ event) filters
-
-gitLsFiles :: Path Abs Dir -> IO (Maybe (Set FilePath))
+gitLsFiles :: Path Abs Dir -> IO (Maybe (Set (Path Abs File)))
 gitLsFiles here = do
   let processConfig = shell "git ls-files"
   (ec, out) <- readProcessStdout processConfig
@@ -79,7 +99,12 @@ gitLsFiles here = do
     ExitFailure _ -> Nothing
     ExitSuccess -> Just set
 
-filesFromFindArgs :: Path Abs Dir -> String -> IO (Set FilePath)
+mkFindFilter :: Path Abs Dir -> FilterSettings -> IO Filter
+mkFindFilter here FilterSettings {..} = case filterSettingFind of
+  Nothing -> pure mempty
+  Just args -> fileSetFilter <$> filesFromFindArgs here args
+
+filesFromFindArgs :: Path Abs Dir -> String -> IO (Set (Path Abs File))
 filesFromFindArgs here args = do
   let processConfig = setStdout createPipe $ shell $ "find " <> args
   (ec, out) <- readProcessStdout processConfig
@@ -88,41 +113,39 @@ filesFromFindArgs here args = do
     ExitFailure _ -> die $ "Find failed: " <> show ec
     ExitSuccess -> pure set
 
-bytesFileSet :: Path Abs Dir -> LB.ByteString -> IO (Set FilePath)
+bytesFileSet :: Path Abs Dir -> LB.ByteString -> IO (Set (Path Abs File))
 bytesFileSet here lb =
   runConduit $
     CL.sourceList (LB8.lines lb)
       .| C.map LB.toStrict
       .| fileSetBuilder here
 
-handleFileSet :: Path Abs Dir -> Handle -> IO (Set FilePath)
+handleFileSet :: Path Abs Dir -> Handle -> IO (Set (Path Abs File))
 handleFileSet here h =
   runConduit $
     C.sourceHandle h
       .| C.linesUnboundedAscii
       .| fileSetBuilder here
 
-fileSetBuilder :: Path Abs Dir -> ConduitT ByteString Void IO (Set FilePath)
+fileSetBuilder :: Path Abs Dir -> ConduitT ByteString Void IO (Set (Path Abs File))
 fileSetBuilder here =
   C.concatMap TE.decodeUtf8'
     .| C.map T.unpack
     .| C.mapM (resolveFile here)
-    .| C.map fromAbsFile
     .| C.foldMap S.singleton
 
-standardEventFilter :: Path Abs Dir -> FS.Event -> Bool
-standardEventFilter here fsEvent =
-  and
-    [ -- It's not one of those files that vim makes
-      (filename <$> parseAbsFile (eventPath fsEvent)) /= Just [relfile|4913|],
-      not $ "~" `isSuffixOf` eventPath fsEvent,
-      -- It's not a hidden file
-      not $ hiddenHere here (eventPath fsEvent)
-    ]
-
-hiddenHere :: Path Abs Dir -> FilePath -> Bool
-hiddenHere here filePath =
-  (hidden <$> (parseAbsFile filePath >>= stripProperPrefix here)) /= Just False
+standardFilter :: Path Abs Dir -> Filter
+standardFilter here =
+  Filter
+    { filterDirFilter = not . isHiddenIn here,
+      filterFileFilter = \f ->
+        and
+          [ not $ isHiddenIn here f,
+            -- It's not one of those files that vim makes
+            not $ "~" `isSuffixOf` fromAbsFile f,
+            filename f /= [relfile|4913|]
+          ]
+    }
 
 hidden :: Path Rel File -> Bool
 hidden = goFile
