@@ -52,7 +52,7 @@ runFeedbackLoop = do
   let doSingleLoop loopBegin = do
         -- We show a 'preparing' chunk before we get the settings because sometimes
         -- getting the settings can take a while, for example in big repositories.
-        putTimedChunks terminalCapabilities loopBegin [indicatorChunk "Preparing"]
+        putTimedChunks terminalCapabilities loopBegin [indicatorChunk "preparing"]
         LoopSettings {..} <- getLoopSettings
         -- 0.1 second debouncing, 0.001 was too little
         let conf = FS.defaultConfig {confDebounce = Debounce 0.1}
@@ -82,7 +82,7 @@ startWatching ::
   IO StopListening
 startWatching here mStdinFiles filterSettings terminalCapabilities loopBegin watchManager eventChan = do
   let put = putTimedChunks terminalCapabilities loopBegin
-  put [indicatorChunk "Making filter"]
+  put [indicatorChunk "selecting"]
   eventFilter <- mkEventFilter here mStdinFiles filterSettings
   let descendHandler :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO (WalkAction Abs)
       descendHandler dir subdirs _ =
@@ -91,7 +91,7 @@ startWatching here mStdinFiles filterSettings terminalCapabilities loopBegin wat
           WalkExclude $ filter (isHiddenIn dir) subdirs
       outputWriter :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO StopListening
       outputWriter dir _ _ = do
-        put [indicatorChunk "Watching", chunk $ T.pack $ fromAbsDir dir]
+        put [indicatorChunk "watching", chunk $ T.pack $ fromAbsDir dir]
         watchDirChan watchManager (fromAbsDir dir) eventFilter eventChan
   walkDirAccum (Just descendHandler) outputWriter here
 

@@ -29,7 +29,7 @@ putTimedChunks terminalCapabilities loopBegin chunks = do
   putChunksLocaleWith terminalCapabilities $ timeChunk : " " : relativeTimeChunk : " " : chunks ++ ["\n"]
 
 putDone :: TerminalCapabilities -> ZonedTime -> IO ()
-putDone terminalCapabilities loopBegin = putTimedChunks terminalCapabilities loopBegin [indicatorChunk "Done."]
+putDone terminalCapabilities loopBegin = putTimedChunks terminalCapabilities loopBegin [indicatorChunk "done."]
 
 indicatorChunk :: String -> Chunk
 indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"
