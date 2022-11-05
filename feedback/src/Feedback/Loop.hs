@@ -60,11 +60,11 @@ runFeedbackLoop = do
           eventChan <- newChan
           outputChan <- newChan
           stopListeningAction <-
-            FS.watchTree
+            FS.watchTreeChan
               watchManager
               (fromAbsDir here) -- Where to watch
               eventFilter
-              (writeChan eventChan)
+              eventChan
           race_
             (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
             (outputWorker terminalCapabilities loopBegin loopSettingOutputSettings outputChan)
@@ -165,6 +165,7 @@ waitForEvent eventChan = do
           (FSEvent <$> readChan eventChan)
     else FSEvent <$> readChan eventChan
   where
+
 #ifdef MIN_VERSION_Win32
       getMinTTY = withHandleToHANDLE stdin isMinTTYHandle
 #else
