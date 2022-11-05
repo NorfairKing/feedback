@@ -32,7 +32,7 @@ putDone :: TerminalCapabilities -> ZonedTime -> IO ()
 putDone terminalCapabilities loopBegin = putTimedChunks terminalCapabilities loopBegin [indicatorChunk "done."]
 
 indicatorChunk :: String -> Chunk
-indicatorChunk = fore cyan . chunk . T.pack . printf "%-10s"
+indicatorChunk = fore cyan . chunk . T.pack . printf "%-12s"
 
 loopNameChunk :: String -> Chunk
 loopNameChunk = fore yellow . chunk . T.pack

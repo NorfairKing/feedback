@@ -47,6 +47,8 @@ runFeedbackLoop = do
   -- consumed once and we'll want to be able to reread filters below.
   stdinFilter <- mkStdinFilter here
 
+  -- Figure out if colours are supported up front, no need to do that in the
+  -- loop.
   terminalCapabilities <- getTermCaps
 
   -- Get the threadid for a child process to throw an exception to when it's
@@ -60,22 +62,24 @@ runFeedbackLoop = do
 
         -- Get the loop settings within the loop, so that the loop can be
         -- what is being worked on.
-        LoopSettings {..} <- getLoopSettings
+        loopSettings <- getLoopSettings
 
         FS.withManagerConf FS.defaultConfig $ \watchManager -> do
           -- Set up watchers for each relevant directory and send the FSNotify
           -- events down this event channel.
           eventChan <- newChan
-          stopListeningAction <- startWatching here stdinFilter loopSettingFilterSettings terminalCapabilities loopBegin watchManager eventChan
+          stopListeningAction <-
+            startWatching
+              here
+              stdinFilter
+              terminalCapabilities
+              loopBegin
+              loopSettings
+              watchManager
+              eventChan
 
-          -- At the same time:
-          -- Start the process and send output events through this output channel,
-          -- and
-          -- output the resuls to stdout.
-          outputChan <- newChan
-          race_
-            (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
-            (outputWorker loopSettingOutputSettings terminalCapabilities loopBegin outputChan)
+          -- Start the process and put output.
+          worker mainThreadId loopSettings terminalCapabilities loopBegin eventChan
             `finally` stopListeningAction
 
   let singleIteration = do
@@ -88,17 +92,22 @@ runFeedbackLoop = do
 startWatching ::
   Path Abs Dir ->
   Filter ->
-  FilterSettings ->
   TerminalCapabilities ->
   ZonedTime ->
+  LoopSettings ->
   WatchManager ->
   Chan FS.Event ->
   IO StopListening
-startWatching here stdinFilter filterSettings terminalCapabilities loopBegin watchManager eventChan = do
-  let put = putTimedChunks terminalCapabilities loopBegin
-  put [indicatorChunk "filtering"]
-  f <- (stdinFilter <>) <$> mkCombinedFilter here filterSettings
-  put [indicatorChunk "watching"]
+startWatching here stdinFilter terminalCapabilities loopBegin LoopSettings {..} watchManager eventChan = do
+  let sendOutput :: Output -> IO ()
+      sendOutput = putOutput loopSettingOutputSettings terminalCapabilities loopBegin
+
+  -- Build the filter that says which files and directories to care about
+  sendOutput OutputFiltering
+  f <- (stdinFilter <>) <$> mkCombinedFilter here loopSettingFilterSettings
+
+  -- Set up the fsnotify watchers based on that filter
+  sendOutput OutputWatching
   let descendHandler :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO (WalkAction Abs)
       descendHandler dir subdirs _ =
         -- Don't descent into hidden directories
@@ -125,35 +134,33 @@ data RestartEvent
   | StdinEvent !Char
   deriving (Show, Eq)
 
-processWorker :: ThreadId -> RunSettings -> Chan FS.Event -> Chan Output -> IO ()
-processWorker mainThreadId runSettings eventChan outputChan = do
-  let sendOutput = writeChan outputChan
-  -- Record starting time
-  start <- getMonotonicTimeNSec
-  -- Start process
-  processHandle <- startProcessHandle runSettings
-  -- Output that the process has started
-  sendOutput $ OutputProcessStarted runSettings
+worker :: ThreadId -> LoopSettings -> TerminalCapabilities -> ZonedTime -> Chan FS.Event -> IO ()
+worker mainThreadId LoopSettings {..} terminalCapabilities loopBegin eventChan = do
+  let sendOutput :: Output -> IO ()
+      sendOutput = putOutput loopSettingOutputSettings terminalCapabilities loopBegin
 
-  -- So we don't need idle gc
+  -- Record starting time of the process.
+  -- This is different from 'loopBegin' because preparing the watchers may take
+  -- a nontrivial amount of time.
+  start <- getMonotonicTimeNSec
+
+  -- Start the process process
+  processHandle <- startProcessHandle loopSettingRunSettings
+  sendOutput $ OutputProcessStarted loopSettingRunSettings
+
+  -- Perform GC after the process has started, because that's when we're
+  -- waiting anyway, so that we don't need idle gc.
   performGC
 
-  -- Make sure we kill the process and wait for it to exit if a user presses C-c
-  -- happens. This is important
-  let killHandler :: Signal.Handler
-      killHandler = CatchOnce $ do
-        stopProcessHandle processHandle
-        _ <- waitProcessHandle processHandle
-        -- Throw a 'UserInterrupt' to the main thread so that the main thread
-        -- can print "Done." after the child processes have exited.
-        throwTo mainThreadId UserInterrupt
+  -- Make sure we kill the process and wait for it to exit if a user presses
+  -- C-c.
+  installKillHandler mainThreadId processHandle
 
-  -- Install this kill handler for sigINT only.
-  -- In the case of sigKILL, which we can't really be sure to catch anyway,
-  -- crash harder.
-  _ <- installHandler sigINT killHandler Nothing
+  -- From here on we will wait for either:
+  -- 1. A change to a file that we are watching, or
+  -- 2. The process to finish.
 
-  -- If An event happened first, output it and kill the process.
+  -- 1. If An event happened first, output it and kill the process.
   let handleEventHappened event = do
         -- Output the event that has fired
         sendOutput $ OutputEvent event
@@ -170,7 +177,7 @@ processWorker mainThreadId runSettings eventChan outputChan = do
         -- Output that the process has finished
         sendOutput $ OutputProcessExited ec (end - start)
 
-  -- If the process finished first, show the result and wait for an event anyway
+  -- 2. If the process finished first, show the result and wait for an event anyway
   let handleProcessDone ec = do
         end <- getMonotonicTimeNSec
         sendOutput $ OutputProcessExited ec (end - start)
@@ -188,6 +195,22 @@ processWorker mainThreadId runSettings eventChan outputChan = do
     Left event -> handleEventHappened event
     Right ec -> handleProcessDone ec
 
+installKillHandler :: ThreadId -> ProcessHandle -> IO ()
+installKillHandler mainThreadId processHandle = do
+  let killHandler :: Signal.Handler
+      killHandler = CatchOnce $ do
+        stopProcessHandle processHandle
+        _ <- waitProcessHandle processHandle
+        -- Throw a 'UserInterrupt' to the main thread so that the main thread
+        -- can print "Done." after the child processes have exited.
+        throwTo mainThreadId UserInterrupt
+
+  -- Install this kill handler for sigINT only.
+  -- In the case of sigKILL, which we can't really be sure to catch anyway,
+  -- crash harder.
+  _ <- installHandler sigINT killHandler Nothing
+  pure ()
+
 waitForEvent :: Chan FS.Event -> IO RestartEvent
 waitForEvent eventChan = do
   isTerminal <- hIsTerminalDevice stdin
@@ -202,26 +225,25 @@ waitForEvent eventChan = do
     else FSEvent <$> readChan eventChan
 
 data Output
-  = OutputEvent !RestartEvent
+  = OutputFiltering
+  | OutputWatching
+  | OutputEvent !RestartEvent
   | OutputKilling
   | OutputKilled
   | OutputProcessStarted !RunSettings
   | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
-outputWorker :: OutputSettings -> TerminalCapabilities -> ZonedTime -> Chan Output -> IO ()
-outputWorker outputSettings terminalCapabilities loopBegin outputChan =
-  forever $ do
-    event <- readChan outputChan
-    putOutput outputSettings terminalCapabilities loopBegin event
-
 putOutput :: OutputSettings -> TerminalCapabilities -> ZonedTime -> Output -> IO ()
 putOutput OutputSettings {..} terminalCapabilities loopBegin =
   let put = putTimedChunks terminalCapabilities loopBegin
    in \case
+        OutputFiltering -> put [indicatorChunk "filtering"]
+        OutputWatching -> put [indicatorChunk "watching"]
         OutputEvent restartEvent -> do
           put $
-            indicatorChunk "event:" : case restartEvent of
+            indicatorChunk "event:" :
+            " " : case restartEvent of
               FSEvent fsEvent ->
                 [ case fsEvent of
                     Added {} -> fore green " added    "
@@ -230,7 +252,7 @@ putOutput OutputSettings {..} terminalCapabilities loopBegin =
                     Unknown {} -> " unknown  ",
                   chunk $ T.pack $ eventPath fsEvent
                 ]
-              StdinEvent c -> [chunk $ T.pack $ show c]
+              StdinEvent c -> [fore magenta "manual restart: ", chunk $ T.pack $ show c]
         OutputKilling -> put [indicatorChunk "killing"]
         OutputKilled -> put [indicatorChunk "killed"]
         OutputProcessStarted runSettings -> do

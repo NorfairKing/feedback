@@ -49,12 +49,13 @@ executables:
     - -threaded
     - -rtsopts
     - -optP-Wno-nonportable-include-path # For macos
-    # -N2: Use two threads, because we only need two threads:
+    # -N3: Use two threads, because we only need three threads:
     # 1. FS Notify listener
-    # 2. 'processWorker'
+    # 2. Wait for an event
+    # 3. Wait for the process
     #
     # -I0: Turn off idle GC because we GC manually between loops.
-    - '"-with-rtsopts=-N2 -I0"'
+    - '"-with-rtsopts=-N3 -I0"'
     dependencies:
     - feedback
   feedback-test:
