@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -74,7 +75,7 @@ runFeedbackLoop = do
           outputChan <- newChan
           race_
             (processWorker mainThreadId loopSettingRunSettings eventChan outputChan)
-            (outputWorker terminalCapabilities loopBegin loopSettingOutputSettings outputChan)
+            (outputWorker loopSettingOutputSettings terminalCapabilities loopBegin outputChan)
             `finally` stopListeningAction
 
   let singleIteration = do
@@ -208,31 +209,35 @@ data Output
   | OutputProcessExited !ExitCode !Word64
   deriving (Show)
 
-outputWorker :: TerminalCapabilities -> ZonedTime -> OutputSettings -> Chan Output -> IO ()
-outputWorker terminalCapabilities loopBegin OutputSettings {..} outputChan = do
-  let put = putTimedChunks terminalCapabilities loopBegin
+outputWorker :: OutputSettings -> TerminalCapabilities -> ZonedTime -> Chan Output -> IO ()
+outputWorker outputSettings terminalCapabilities loopBegin outputChan =
   forever $ do
     event <- readChan outputChan
-    case event of
-      OutputEvent restartEvent -> do
-        put $
-          indicatorChunk "event:" : case restartEvent of
-            FSEvent fsEvent ->
-              [ case fsEvent of
-                  Added {} -> fore green " added    "
-                  Modified {} -> fore yellow " modified "
-                  Removed {} -> fore red " removed  "
-                  Unknown {} -> " unknown  ",
-                chunk $ T.pack $ eventPath fsEvent
-              ]
-            StdinEvent c -> [chunk $ T.pack $ show c]
-      OutputKilling -> put [indicatorChunk "killing"]
-      OutputKilled -> put [indicatorChunk "killed"]
-      OutputProcessStarted runSettings -> do
-        case outputSettingClear of
-          ClearScreen -> putStr "\ESCc"
-          DoNotClearScreen -> pure ()
-        mapM_ put $ startingLines runSettings
-      OutputProcessExited ec nanosecs -> do
-        put $ exitCodeChunks ec
-        put $ durationChunks nanosecs
+    putOutput outputSettings terminalCapabilities loopBegin event
+
+putOutput :: OutputSettings -> TerminalCapabilities -> ZonedTime -> Output -> IO ()
+putOutput OutputSettings {..} terminalCapabilities loopBegin =
+  let put = putTimedChunks terminalCapabilities loopBegin
+   in \case
+        OutputEvent restartEvent -> do
+          put $
+            indicatorChunk "event:" : case restartEvent of
+              FSEvent fsEvent ->
+                [ case fsEvent of
+                    Added {} -> fore green " added    "
+                    Modified {} -> fore yellow " modified "
+                    Removed {} -> fore red " removed  "
+                    Unknown {} -> " unknown  ",
+                  chunk $ T.pack $ eventPath fsEvent
+                ]
+              StdinEvent c -> [chunk $ T.pack $ show c]
+        OutputKilling -> put [indicatorChunk "killing"]
+        OutputKilled -> put [indicatorChunk "killed"]
+        OutputProcessStarted runSettings -> do
+          case outputSettingClear of
+            ClearScreen -> putStr "\ESCc"
+            DoNotClearScreen -> pure ()
+          mapM_ put $ startingLines runSettings
+        OutputProcessExited ec nanosecs -> do
+          put $ exitCodeChunks ec
+          put $ durationChunks nanosecs
