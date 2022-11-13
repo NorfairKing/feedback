@@ -245,12 +245,14 @@ emptyOutputConfiguration =
     }
 
 getConfiguration :: Flags -> Environment -> IO (Maybe Configuration)
-getConfiguration Flags {..} Environment {..} =
-  case flagConfigFile <|> envConfigFile of
-    Nothing -> defaultConfigFile >>= readYamlConfigFile
-    Just cf -> do
-      afp <- resolveFile' cf
-      readYamlConfigFile afp
+getConfiguration Flags {..} Environment {..} = do
+  fp <- case flagConfigFile <|> envConfigFile of
+    Nothing -> defaultConfigFile
+    Just cf -> resolveFile' cf
+  getConfigurationFromFile fp
+
+getConfigurationFromFile :: Path Abs File -> IO (Maybe Configuration)
+getConfigurationFromFile = readYamlConfigFile
 
 defaultConfigFile :: IO (Path Abs File)
 defaultConfigFile = do
@@ -303,8 +305,8 @@ flagsParser =
         ]
 
 data Flags = Flags
-  { flagConfigFile :: !(Maybe FilePath),
-    flagCommand :: !String,
+  { flagCommand :: !String,
+    flagConfigFile :: !(Maybe FilePath),
     flagOutputFlags :: !OutputFlags,
     flagDebug :: Bool
   }
@@ -318,7 +320,8 @@ data OutputFlags = OutputFlags
 parseFlags :: OptParse.Parser Flags
 parseFlags =
   Flags
-    <$> optional
+    <$> parseCommandFlags
+    <*> optional
       ( strOption
           ( mconcat
               [ long "config-file",
@@ -327,7 +330,6 @@ parseFlags =
               ]
           )
       )
-    <*> parseCommandFlags
     <*> parseOutputFlags
     <*> switch (mconcat [long "debug", help "show debug information"])
 
@@ -337,7 +339,8 @@ parseCommandFlags =
         strArgument
           ( mconcat
               [ help "The command to run",
-                metavar "COMMAND"
+                metavar "COMMAND",
+                completer (listIOCompleter defaultConfigFileCompleter)
               ]
           )
       escapeChar = \case
@@ -348,6 +351,11 @@ parseCommandFlags =
       quoteIfNecessary s = if ' ' `elem` s then quote s else s
       pieceBackTogether = unwords . map quoteIfNecessary
    in pieceBackTogether <$> many commandArg
+
+defaultConfigFileCompleter :: IO [String]
+defaultConfigFileCompleter = do
+  mConfig <- defaultConfigFile >>= getConfigurationFromFile
+  pure $ M.keys (maybe [] configLoops mConfig)
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
