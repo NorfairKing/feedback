@@ -17,13 +17,6 @@ import Text.Colour.Term (putChunksLocale)
 #endif
 import Text.Show.Pretty (pPrint)
 
-getLoopSettings :: IO LoopSettings
-getLoopSettings = do
-  flags <- getFlags
-  env <- getEnvironment
-  config <- getConfiguration flags env
-  combineToSettings flags env config
-
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO LoopSettings
 combineToSettings flags@Flags {..} environment mConf = do
   let loops = maybe M.empty configLoops mConf

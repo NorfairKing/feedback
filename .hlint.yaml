@@ -12,3 +12,5 @@
     name: "Use record patterns"
 - ignore:
     name: "Use getChar"
+- ignore:
+    name: "Replace case with maybe"

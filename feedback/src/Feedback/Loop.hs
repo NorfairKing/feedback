@@ -55,14 +55,22 @@ runFeedbackLoop = do
   -- being killed by the user.
   mainThreadId <- myThreadId
 
+  -- Get the flags and the environment up front, because they don't change
+  -- anyway.
+  -- This is also important because autocompletion won't work if we output
+  -- something before parsing the flags.
+  flags <- getFlags
+  env <- getEnvironment
+
   let doSingleLoop loopBegin = do
         -- We show a 'preparing' chunk before we get the settings because sometimes
         -- getting the settings can take a while, for example in big repositories.
         putTimedChunks terminalCapabilities loopBegin [indicatorChunk "preparing"]
 
-        -- Get the loop settings within the loop, so that the loop can be
-        -- what is being worked on.
-        loopSettings <- getLoopSettings
+        -- Get the loop configuration within the loop, so that the loop
+        -- configuration can be what is being worked on.
+        mConfiguration <- getConfiguration flags env
+        loopSettings <- combineToSettings flags env mConfiguration
 
         FS.withManagerConf FS.defaultConfig $ \watchManager -> do
           -- Set up watchers for each relevant directory and send the FSNotify
