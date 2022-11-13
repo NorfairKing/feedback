@@ -1,5 +1,10 @@
 {
   description = "feedback";
+  nixConfig = {
+    extra-substituters = "https://feedback.cachix.org";
+    extra-trusted-public-keys = "feedback.cachix.org-1:8PNDEJ4GTCbsFUwxVWE/ulyoBMDqqL23JA44yB0j1jI=";
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
