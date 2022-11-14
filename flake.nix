@@ -66,12 +66,12 @@
         packages = p: [ p.feedback ];
         withHoogle = true;
         doBenchmark = true;
-        buildInputs = with pkgs; [
+        buildInputs = (with pkgs; [
           feedback
           niv
           zlib
           cabal-install
-        ] ++ (with pre-commit-hooks;
+        ]) ++ (with pre-commit-hooks.packages.${system};
           [
             hlint
             hpack
