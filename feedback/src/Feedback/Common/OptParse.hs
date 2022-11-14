@@ -17,6 +17,7 @@ import Data.Maybe
 import qualified Data.Text as T
 import Data.Version
 import Data.Yaml (FromJSON, ToJSON)
+import Debug.Trace
 import qualified Env
 import GHC.Generics (Generic)
 import Options.Applicative as OptParse
@@ -348,9 +349,10 @@ parseCommandFlags =
         '\'' -> "\\\'"
         c -> [c]
       quote = ("\"" <>) . (<> "\"") . concatMap escapeChar
+      quoteIfNecessary "" = quote ""
       quoteIfNecessary s = if ' ' `elem` s then quote s else s
       pieceBackTogether = unwords . map quoteIfNecessary
-   in pieceBackTogether <$> many commandArg
+   in pieceBackTogether . traceShowId <$> many commandArg
 
 defaultConfigFileCompleter :: IO [String]
 defaultConfigFileCompleter = do
