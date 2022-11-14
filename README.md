@@ -72,30 +72,6 @@ Add this to your system flake:
 }
 ```
 
-## Hacking
-
-1. Enter a dev shell
-
-   ```
-   $ nix develop
-   ```
-
-2. Start a feedback loop
-
-   ```
-   feedback istall
-   ```
-
-3. Make your changes
-
-4. Make sure CI will pass
-  
-   ```
-   nix flake check
-   ```
-
-5. Make a PR to `development`.
-
 ## Comparison with other tools
 
 | | feedback | [steeloverseer](https://github.com/schell/steeloverseer) | [watchexec](https://github.com/watchexec/watchexec) | [entr](https://github.com/eradman/entr)
@@ -121,3 +97,27 @@ Add this to your system flake:
 * 🚧: Under development
 * ✖️: Not supported
 * ?: I don't know.
+
+## Hacking
+
+1. Enter a dev shell
+
+   ```
+   $ nix develop
+   ```
+
+2. Start a feedback loop
+
+   ```
+   feedback istall
+   ```
+
+3. Make your changes
+
+4. Make sure CI will pass
+
+   ```
+   nix flake check
+   ```
+
+5. Make a PR to `development`.

@@ -210,7 +210,7 @@ installKillHandler mainThreadId processHandle = do
         stopProcessHandle processHandle
         _ <- waitProcessHandle processHandle
         -- Throw a 'UserInterrupt' to the main thread so that the main thread
-        -- can print "Done." after the child processes have exited.
+        -- can print done after the child processes have exited.
         throwTo mainThreadId UserInterrupt
 
   -- Install this kill handler for sigINT only.
