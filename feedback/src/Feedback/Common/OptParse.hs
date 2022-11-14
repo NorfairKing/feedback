@@ -62,14 +62,14 @@ data OutputSettings = OutputSettings
   deriving (Show, Eq, Generic)
 
 data FilterSettings = FilterSettings
-  { filterSettingGitingore :: !Bool,
+  { filterSettingGitignore :: !Bool,
     filterSettingFind :: !(Maybe String)
   }
   deriving (Show, Eq, Generic)
 
 combineToFilterSettings :: FilterConfiguration -> FilterSettings
 combineToFilterSettings FilterConfiguration {..} =
-  let filterSettingGitingore = fromMaybe True filterConfigGitignore
+  let filterSettingGitignore = fromMaybe True filterConfigGitignore
       filterSettingFind = filterConfigFind
    in FilterSettings {..}
 

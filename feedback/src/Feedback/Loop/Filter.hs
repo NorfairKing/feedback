@@ -84,7 +84,7 @@ getStdinFiles here = do
 
 mkGitFilter :: Path Abs Dir -> FilterSettings -> IO Filter
 mkGitFilter here FilterSettings {..} = do
-  if filterSettingGitingore
+  if filterSettingGitignore
     then do
       mGitFiles <- gitLsFiles here
       pure $ maybe mempty fileSetFilter mGitFiles
