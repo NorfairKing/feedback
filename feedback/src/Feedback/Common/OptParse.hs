@@ -75,7 +75,9 @@ combineToFilterSettings FilterConfiguration {..} =
 
 combineToOutputSettings :: OutputFlags -> OutputConfiguration -> OutputSettings
 combineToOutputSettings OutputFlags {..} mConf =
-  let outputSettingClear = fromMaybe ClearScreen $ outputFlagClear <|> outputConfigClear mConf
+  let outputSettingClear =
+        fromMaybe (if outputFlagDebug then DoNotClearScreen else ClearScreen) $
+          outputFlagClear <|> outputConfigClear mConf
    in OutputSettings {..}
 
 data Configuration = Configuration
@@ -308,13 +310,13 @@ flagsParser =
 data Flags = Flags
   { flagCommand :: !String,
     flagConfigFile :: !(Maybe FilePath),
-    flagOutputFlags :: !OutputFlags,
-    flagDebug :: Bool
+    flagOutputFlags :: !OutputFlags
   }
   deriving (Show, Eq, Generic)
 
 data OutputFlags = OutputFlags
-  { outputFlagClear :: !(Maybe Clear)
+  { outputFlagClear :: !(Maybe Clear),
+    outputFlagDebug :: Bool
   }
   deriving (Show, Eq, Generic)
 
@@ -332,7 +334,6 @@ parseFlags =
           )
       )
     <*> parseOutputFlags
-    <*> switch (mconcat [long "debug", help "show debug information"])
 
 parseCommandFlags :: OptParse.Parser String
 parseCommandFlags =
@@ -363,6 +364,7 @@ parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =
   OutputFlags
     <$> parseClearFlag
+    <*> switch (mconcat [long "debug", help "show debug information"])
 
 data Command
   = CommandArgs !String

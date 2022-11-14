@@ -52,7 +52,7 @@ combineToSettings flags@Flags {..} environment mConf = do
           environment
           (mConf >>= configOutputConfiguration)
           loopConfig
-      when flagDebug $ pPrint loopSets
+      when (outputFlagDebug flagOutputFlags) $ pPrint loopSets
       pure loopSets
   where
 
