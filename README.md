@@ -64,11 +64,10 @@ Add this to your system flake:
       nixosConfigurations.example = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          { environment.systemPackages = [ feedback.packages.${system}.default ];
+          { environment.systemPackages = [ feedback.packages.${system}.default ]; }
         ];
-      }
+      };
     };
-  };
 }
 ```
 
