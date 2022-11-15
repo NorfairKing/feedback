@@ -5,9 +5,13 @@
     extra-trusted-public-keys = "feedback.cachix.org-1:8PNDEJ4GTCbsFUwxVWE/ulyoBMDqqL23JA44yB0j1jI=";
   };
 
-  inputs = {
+  inputs = rec {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
+    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils.inputs.nixpkgs.follows = "nixpkgs";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
+    pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
+    pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
     validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
     autodocodec.url = "github:NorfairKing/autodocodec?ref=flake";
@@ -21,47 +25,29 @@
   outputs =
     { self
     , nixpkgs
+    , flake-utils
     , pre-commit-hooks
     , validity
     , safe-coloured-text
     , sydtest
     , autodocodec
     }:
+    flake-utils.lib.eachDefaultSystem (system:
     let
-      system = "x86_64-linux";
-      pkgsFor = nixpkgs: import nixpkgs {
+      pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          self.overlays.${system}
+          overlays
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
         ];
       };
-      pkgs = pkgsFor nixpkgs;
-
-    in
-    {
-      overlays.${system} = import ./nix/overlay.nix;
-      packages.${system}.default = pkgs.feedback;
-      checks.${system} = {
-        package = self.packages.${system}.default;
-        shell = self.devShells.${system}.default;
-        pre-commit = pre-commit-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            hlint.enable = true;
-            hpack.enable = true;
-            ormolu.enable = true;
-            nixpkgs-fmt.enable = true;
-            nixpkgs-fmt.excludes = [ ".*/default.nix" ];
-            cabal2nix.enable = true;
-          };
-        };
-      };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
+      overlays = import ./nix/overlay.nix;
+      package = pkgs.feedback;
+      shell = pkgs.haskellPackages.shellFor {
         name = "feedback-shell";
         packages = p: [ p.feedback ];
         withHoogle = true;
@@ -71,7 +57,7 @@
           niv
           zlib
           cabal-install
-        ]) ++ (with pre-commit-hooks.packages.${system};
+        ]) ++ (with pre-commit-hooks.packages;
           [
             hlint
             hpack
@@ -79,7 +65,27 @@
             ormolu
             cabal2nix
           ]);
-        shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
+        shellHook = pre-commit.shellHook + pkgs.feedback.shellHook;
       };
-    };
+      pre-commit = pre-commit-hooks.lib.${system}.run {
+        src = ./.;
+        hooks = {
+          hlint.enable = true;
+          hpack.enable = true;
+          ormolu.enable = true;
+          nixpkgs-fmt.enable = true;
+          nixpkgs-fmt.excludes = [ ".*/default.nix" ];
+          cabal2nix.enable = true;
+        };
+      };
+    in
+    {
+      inherit overlays;
+      packages.default = package;
+      defaultPackage = package;
+      checks = {
+        inherit package shell pre-commit;
+      };
+      devShells.default = shell;
+    });
 }
