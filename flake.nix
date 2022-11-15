@@ -5,7 +5,7 @@
     extra-trusted-public-keys = "feedback.cachix.org-1:8PNDEJ4GTCbsFUwxVWE/ulyoBMDqqL23JA44yB0j1jI=";
   };
 
-  inputs = rec {
+  inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
     flake-utils.url = "github:numtide/flake-utils";
     flake-utils.inputs.nixpkgs.follows = "nixpkgs";
@@ -38,14 +38,14 @@
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          overlays
+          overlay
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
         ];
       };
-      overlays = import ./nix/overlay.nix;
+      overlay = import ./nix/overlay.nix;
       package = pkgs.feedback;
       shell = pkgs.haskellPackages.shellFor {
         name = "feedback-shell";
@@ -80,7 +80,7 @@
       };
     in
     {
-      inherit overlays;
+      overlays = overlay;
       packages.default = package;
       defaultPackage = package;
       checks = {
