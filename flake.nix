@@ -10,8 +10,6 @@
     flake-utils.url = "github:numtide/flake-utils";
     flake-utils.inputs.nixpkgs.follows = "nixpkgs";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
-    pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
-    pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
     validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
     autodocodec.url = "github:NorfairKing/autodocodec?ref=flake";
@@ -57,7 +55,7 @@
           niv
           zlib
           cabal-install
-        ]) ++ (with pre-commit-hooks.packages;
+        ]) ++ (with pre-commit-hooks.packages.${system};
           [
             hlint
             hpack
@@ -84,7 +82,10 @@
       packages.default = package;
       defaultPackage = package;
       checks = {
-        inherit package shell pre-commit;
+        inherit
+          package
+          shell
+          pre-commit;
       };
       devShells.default = shell;
     });
