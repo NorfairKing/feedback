@@ -26,9 +26,10 @@
     , safe-coloured-text
     , sydtest
     , autodocodec
+    , flake-utils
     }:
+    flake-utils.lib.eachSystem [ flake-utils.lib.system.x86_64-darwin flake-utils.lib.system.aarch64-darwin ] (system:
     let
-      system = "x86_64-linux";
       pkgsFor = nixpkgs: import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -44,9 +45,9 @@
 
     in
     {
-      overlays.${system} = import ./nix/overlay.nix;
-      packages.${system}.default = pkgs.feedback;
-      checks.${system} = {
+      overlays = import ./nix/overlay.nix;
+      packages.default = pkgs.feedback;
+      checks = {
         package = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
         pre-commit = pre-commit-hooks.lib.${system}.run {
@@ -61,7 +62,7 @@
           };
         };
       };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
+      devShells.default = pkgs.haskellPackages.shellFor {
         name = "feedback-shell";
         packages = p: [ p.feedback ];
         withHoogle = true;
@@ -81,5 +82,6 @@
           ]);
         shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
       };
-    };
+    }
+    );
 }
