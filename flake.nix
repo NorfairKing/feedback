@@ -16,6 +16,8 @@
     safe-coloured-text.flake = false;
     sydtest.url = "github:NorfairKing/sydtest?ref=flake";
     sydtest.flake = false;
+    flake-compat.url = "github:edolstra/flake-compat";
+    flake-compat.flake = false;
   };
 
   outputs =
@@ -26,6 +28,7 @@
     , safe-coloured-text
     , sydtest
     , autodocodec
+    , flake-compat
     }:
     let
       system = "x86_64-linux";
