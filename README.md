@@ -108,7 +108,7 @@ Add this to your system flake:
 2. Start a feedback loop
 
    ```
-   feedback istall
+   feedback install
    ```
 
 3. Make your changes
