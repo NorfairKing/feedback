@@ -16,6 +16,8 @@
     safe-coloured-text.flake = false;
     sydtest.url = "github:NorfairKing/sydtest?ref=flake";
     sydtest.flake = false;
+    dekking.url = "github:NorfairKing/dekking";
+    dekking.flake = false;
   };
 
   outputs =
@@ -26,6 +28,7 @@
     , safe-coloured-text
     , sydtest
     , autodocodec
+    , dekking
     }:
     let
       system = "x86_64-linux";
@@ -38,6 +41,7 @@
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
+          (import (dekking + "/nix/overlay.nix"))
         ];
       };
       pkgs = pkgsFor nixpkgs;
@@ -49,6 +53,11 @@
       checks.${system} = {
         package = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
+        coverage-report = pkgs.dekking.makeCoverageReport {
+          name = "test-coverage-report";
+          coverables = [ "feedback" ];
+          coverage = [ "feedback-test-harness" ];
+        };
         pre-commit = pre-commit-hooks.lib.${system}.run {
           src = ./.;
           hooks = {
