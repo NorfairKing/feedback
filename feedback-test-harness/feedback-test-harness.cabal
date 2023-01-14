@@ -50,6 +50,8 @@ test-suite feedback-test
       base >=4.7 && <5
     , feedback
     , feedback-test-harness
+    , path
+    , path-io
     , sydtest
     , typed-process
   default-language: Haskell2010

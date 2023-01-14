@@ -6,7 +6,9 @@ mkDerivation {
   version = "0.0.0.0";
   src = ./.;
   libraryHaskellDepends = [ base feedback path path-io ];
-  testHaskellDepends = [ base feedback sydtest typed-process ];
+  testHaskellDepends = [
+    base feedback path path-io sydtest typed-process
+  ];
   testToolDepends = [ sydtest-discover ];
   doHaddock = false;
   homepage = "https://github.com/NorfairKing/feedback#readme";

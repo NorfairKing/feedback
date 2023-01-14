@@ -30,5 +30,7 @@ tests:
     dependencies:
     - feedback
     - feedback-test-harness
+    - path
+    - path-io
     - sydtest
     - typed-process
