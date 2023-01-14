@@ -63,7 +63,7 @@
       };
       devShells.${system}.default = pkgs.haskellPackages.shellFor {
         name = "feedback-shell";
-        packages = p: [ p.feedback ];
+        packages = p: [ p.feedback p.feedback-test-harness ];
         withHoogle = true;
         doBenchmark = true;
         buildInputs = (with pkgs; [

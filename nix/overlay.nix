@@ -15,6 +15,7 @@ with final.haskell.lib;
     overrides = composeExtensions (old.overrides or (_: _: { })) (
       self: super:
         {
+          feedback-test-harness = addBuildDepend (self.callPackage ../feedback-test-harness { }) final.feedback;
           feedback = generateOptparseApplicativeCompletion "feedback" (
             buildFromSdist (overrideCabal
               (
