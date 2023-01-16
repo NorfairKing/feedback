@@ -25,17 +25,17 @@ import System.FSNotify as FS
 import System.IO (hGetChar)
 import System.Mem (performGC)
 import System.Posix.Signals as Signal
+import Text.Colour
+import UnliftIO
 #ifdef MIN_VERSION_Win32
 import System.Win32.MinTTY (isMinTTYHandle)
 import System.Win32.Types (withHandleToHANDLE)
 #endif
-import Text.Colour
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 import Text.Colour.Capabilities.FromEnv (getTerminalCapabilitiesFromEnv)
 #else
 import Text.Colour.Capabilities (TerminalCapabilities(..))
 #endif
-import UnliftIO
 
 runFeedbackLoop :: IO ()
 runFeedbackLoop = do

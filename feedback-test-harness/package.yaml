@@ -13,9 +13,9 @@ dependencies:
 library:
   source-dirs: src
   dependencies:
-  - feedback
   - path
   - path-io
+  - feedback
 
 tests:
   feedback-test:
@@ -28,9 +28,10 @@ tests:
     - -with-rtsopts=-N
     - -Wall
     dependencies:
-    - feedback
+    - bytestring
     - feedback-test-harness
     - path
     - path-io
     - sydtest
     - typed-process
+    - unix

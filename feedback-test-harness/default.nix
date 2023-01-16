@@ -1,5 +1,5 @@
-{ mkDerivation, base, feedback, lib, path, path-io, sydtest
-, sydtest-discover, typed-process
+{ mkDerivation, base, bytestring, feedback, lib, path, path-io
+, sydtest, sydtest-discover, typed-process, unix
 }:
 mkDerivation {
   pname = "feedback-test-harness";
@@ -7,7 +7,7 @@ mkDerivation {
   src = ./.;
   libraryHaskellDepends = [ base feedback path path-io ];
   testHaskellDepends = [
-    base feedback path path-io sydtest typed-process
+    base bytestring path path-io sydtest typed-process unix
   ];
   testToolDepends = [ sydtest-discover ];
   doHaddock = false;
