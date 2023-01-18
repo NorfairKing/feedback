@@ -48,6 +48,9 @@ with final.haskell.lib;
             })));
         feedback-test-harness = buildStrictly
           (overrideCabal (self.callPackage ../feedback-test-harness { }) (old: {
+            buildDepends = (old.buildDepends or [ ]) ++ [
+              final.git
+            ];
             # Ugly hack because we can't just add flags to the 'test' invocation.
             # Show test output as we go, instead of all at once afterwards.
             testTarget = (old.testTarget or "") + " --show-details=direct";
