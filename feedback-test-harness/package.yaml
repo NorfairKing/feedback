@@ -1,0 +1,37 @@
+name: feedback-test-harness
+version: 0.0.0.0
+github: "NorfairKing/feedback"
+license: GPL-3.0-only
+author: "Tom Sydney Kerckhove"
+maintainer: "syd@cs-syd.eu"
+copyright: "Copyright (c) 2022-2023 Tom Sydney Kerckhove"
+synopsis: Tests for 'feedback'
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - path
+  - path-io
+  - feedback
+
+tests:
+  feedback-test:
+    main: Spec.hs
+    source-dirs: test/
+    build-tools: sydtest-discover
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    dependencies:
+    - bytestring
+    - feedback-test-harness
+    - path
+    - path-io
+    - sydtest
+    - typed-process
+    - unix

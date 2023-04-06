@@ -56,7 +56,7 @@ Add this to your system flake:
 ``` nix
 {
   inputs = {
-    feedback.url = "github:NorfairKing/feedback?ref=flake";
+    feedback.url = "github:NorfairKing/feedback";
   };
   outputs = { nixpkgs, feedback, ... }:
     let system = "x86_64-linux";
@@ -108,7 +108,7 @@ Add this to your system flake:
 2. Start a feedback loop
 
    ```
-   feedback istall
+   feedback install
    ```
 
 3. Make your changes

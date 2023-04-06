@@ -10,3 +10,11 @@ loops:
   test:
     description: Work on `feedback-test`
     command: cabal run feedback:feedback-test
+
+  test-harness:
+    description: Work on `feedback-test-harness`
+    script: |
+      cabal build feedback:exe:feedback
+      bindir=$(dirname $(cabal list-bin feedback:exe:feedback))
+      export PATH="$bindir:$PATH"
+      cabal test feedback-test-harness

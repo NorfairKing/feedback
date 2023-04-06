@@ -92,7 +92,9 @@ mkGitFilter here FilterSettings {..} = do
 
 gitLsFiles :: Path Abs Dir -> IO (Maybe (Set (Path Abs File)))
 gitLsFiles here = do
-  let processConfig = shell "git ls-files"
+  -- If there is no git directory, we'll get a 'fatal' message on stderr.
+  -- We don't need the user to see this, so we setStderr nullStream.
+  let processConfig = setStderr nullStream $ shell "git ls-files"
   (ec, out) <- readProcessStdout processConfig
   set <- bytesFileSet here out
   pure $ case ec of

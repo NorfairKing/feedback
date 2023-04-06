@@ -7,7 +7,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-22.05";
-    flake-utils.url = "github:numtide/flake-utils";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     validity.url = "github:NorfairKing/validity?ref=flake";
     validity.flake = false;
@@ -17,74 +16,84 @@
     safe-coloured-text.flake = false;
     sydtest.url = "github:NorfairKing/sydtest?ref=flake";
     sydtest.flake = false;
+    dekking.url = "github:NorfairKing/dekking";
+    dekking.flake = false;
   };
 
   outputs =
     { self
     , nixpkgs
-    , flake-utils
     , pre-commit-hooks
     , validity
     , safe-coloured-text
     , sydtest
     , autodocodec
+    , dekking
     }:
-    flake-utils.lib.eachDefaultSystem (system:
     let
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        overlays = [
-          overlay
-          (import (autodocodec + "/nix/overlay.nix"))
-          (import (safe-coloured-text + "/nix/overlay.nix"))
-          (import (sydtest + "/nix/overlay.nix"))
-          (import (validity + "/nix/overlay.nix"))
-        ];
-      };
-      overlay = import ./nix/overlay.nix;
-      package = pkgs.feedback;
-      shell = pkgs.haskellPackages.shellFor {
-        name = "feedback-shell";
-        packages = p: [ p.feedback ];
-        withHoogle = true;
-        doBenchmark = true;
-        buildInputs = (with pkgs; [
-          feedback
-          niv
-          zlib
-          cabal-install
-        ]) ++ (with pre-commit-hooks.packages.${system};
-          [
-            hlint
-            hpack
-            nixpkgs-fmt
-            ormolu
-            cabal2nix
-          ]);
-        shellHook = pre-commit.shellHook + pkgs.feedback.shellHook;
-      };
-      pre-commit = pre-commit-hooks.lib.${system}.run {
-        src = ./.;
-        hooks = {
-          hlint.enable = true;
-          hpack.enable = true;
-          ormolu.enable = true;
-          nixpkgs-fmt.enable = true;
-          nixpkgs-fmt.excludes = [ ".*/default.nix" ];
-          cabal2nix.enable = true;
+      forSystem = system:
+        let
+          pkgsFor = nixpkgs: import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+            overlays = [
+              self.overlays.${system}
+              (import (autodocodec + "/nix/overlay.nix"))
+              (import (safe-coloured-text + "/nix/overlay.nix"))
+              (import (sydtest + "/nix/overlay.nix"))
+              (import (validity + "/nix/overlay.nix"))
+              (import (dekking + "/nix/overlay.nix"))
+            ];
+          };
+          pkgs = pkgsFor nixpkgs;
+
+        in
+        # for system in nixpkgs.lib.systems.supportedSystems; deepmerge this
+
+        {
+          overlays.${system} = import ./nix/overlay.nix;
+          packages.${system}.default = pkgs.feedback;
+          checks.${system} = {
+            package = self.packages.${system}.default;
+            shell = self.devShells.${system}.default;
+            coverage-report = pkgs.dekking.makeCoverageReport {
+              name = "test-coverage-report";
+              coverables = [ "feedback" ];
+              coverage = [ "feedback-test-harness" ];
+            };
+            pre-commit = pre-commit-hooks.lib.${system}.run {
+              src = ./.;
+              hooks = {
+                hlint.enable = true;
+                hpack.enable = true;
+                ormolu.enable = true;
+                nixpkgs-fmt.enable = true;
+                nixpkgs-fmt.excludes = [ ".*/default.nix" ];
+                cabal2nix.enable = true;
+              };
+            };
+          };
+          devShells.${system}.default = pkgs.haskellPackages.shellFor {
+            name = "feedback-shell";
+            packages = p: [ p.feedback p.feedback-test-harness ];
+            withHoogle = true;
+            doBenchmark = true;
+            buildInputs = (with pkgs; [
+              feedback
+              niv
+              zlib
+              cabal-install
+            ]) ++ (with pre-commit-hooks.packages.${system};
+              [
+                hlint
+                hpack
+                nixpkgs-fmt
+                ormolu
+                cabal2nix
+              ]);
+            shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
+          };
         };
-      };
     in
-    {
-      overlays = overlay;
-      packages.default = package;
-      checks = {
-        inherit
-          package
-          shell
-          pre-commit;
-      };
-      devShells.default = shell;
-    });
+    forSystem "x86_64-linux" // forSystem "x86_64-darwin";
 }
