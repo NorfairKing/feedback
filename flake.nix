@@ -31,64 +31,68 @@
     , dekking
     }:
     let
-      system = "x86_64-linux";
-      pkgsFor = nixpkgs: import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        overlays = [
-          self.overlays.${system}
-          (import (autodocodec + "/nix/overlay.nix"))
-          (import (safe-coloured-text + "/nix/overlay.nix"))
-          (import (sydtest + "/nix/overlay.nix"))
-          (import (validity + "/nix/overlay.nix"))
-          (import (dekking + "/nix/overlay.nix"))
-        ];
-      };
-      pkgs = pkgsFor nixpkgs;
-
-    in
-    {
-      overlays.${system} = import ./nix/overlay.nix;
-      packages.${system}.default = pkgs.feedback;
-      checks.${system} = {
-        package = self.packages.${system}.default;
-        shell = self.devShells.${system}.default;
-        coverage-report = pkgs.dekking.makeCoverageReport {
-          name = "test-coverage-report";
-          coverables = [ "feedback" ];
-          coverage = [ "feedback-test-harness" ];
-        };
-        pre-commit = pre-commit-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            hlint.enable = true;
-            hpack.enable = true;
-            ormolu.enable = true;
-            nixpkgs-fmt.enable = true;
-            nixpkgs-fmt.excludes = [ ".*/default.nix" ];
-            cabal2nix.enable = true;
+      forSystem = system:
+        let
+          pkgsFor = nixpkgs: import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+            overlays = [
+              self.overlays.${system}
+              (import (autodocodec + "/nix/overlay.nix"))
+              (import (safe-coloured-text + "/nix/overlay.nix"))
+              (import (sydtest + "/nix/overlay.nix"))
+              (import (validity + "/nix/overlay.nix"))
+              (import (dekking + "/nix/overlay.nix"))
+            ];
+          };
+          pkgs = pkgsFor nixpkgs;
+        in
+        {
+          overlays.${system} = import ./nix/overlay.nix;
+          packages.${system}.default = pkgs.feedback;
+          checks.${system} = {
+            package = self.packages.${system}.default;
+            shell = self.devShells.${system}.default;
+            coverage-report = pkgs.dekking.makeCoverageReport {
+              name = "test-coverage-report";
+              coverables = [ "feedback" ];
+              coverage = [ "feedback-test-harness" ];
+            };
+            pre-commit = pre-commit-hooks.lib.${system}.run {
+              src = ./.;
+              hooks = {
+                hlint.enable = true;
+                hpack.enable = true;
+                ormolu.enable = true;
+                nixpkgs-fmt.enable = true;
+                nixpkgs-fmt.excludes = [ ".*/default.nix" ];
+                cabal2nix.enable = true;
+              };
+            };
+          };
+          devShells.${system}.default = pkgs.haskellPackages.shellFor {
+            name = "feedback-shell";
+            packages = p: [ p.feedback p.feedback-test-harness ];
+            withHoogle = true;
+            doBenchmark = true;
+            buildInputs = (with pkgs; [
+              feedback
+              niv
+              zlib
+              cabal-install
+            ]) ++ (with pre-commit-hooks.packages.${system};
+              [
+                hlint
+                hpack
+                nixpkgs-fmt
+                ormolu
+                cabal2nix
+              ]);
+            shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
           };
         };
-      };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
-        name = "feedback-shell";
-        packages = p: [ p.feedback p.feedback-test-harness ];
-        withHoogle = true;
-        doBenchmark = true;
-        buildInputs = (with pkgs; [
-          feedback
-          niv
-          zlib
-          cabal-install
-        ]) ++ (with pre-commit-hooks.packages.${system};
-          [
-            hlint
-            hpack
-            nixpkgs-fmt
-            ormolu
-            cabal2nix
-          ]);
-        shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
-      };
-    };
+    in
+    nixpkgs.lib.attrsets.recursiveUpdate
+      (forSystem "x86_64-darwin")
+      (forSystem "x86_64-linux");
 }
