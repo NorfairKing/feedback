@@ -46,10 +46,7 @@
             ];
           };
           pkgs = pkgsFor nixpkgs;
-
         in
-        # for system in nixpkgs.lib.systems.supportedSystems; deepmerge this
-
         {
           overlays.${system} = import ./nix/overlay.nix;
           packages.${system}.default = pkgs.feedback;
@@ -95,5 +92,7 @@
           };
         };
     in
-    forSystem "x86_64-linux" // forSystem "x86_64-darwin";
+    nixpkgs.lib.attrsets.recursiveUpdate
+      (forSystem "x86_64-darwin")
+      (forSystem "x86_64-linux");
 }
