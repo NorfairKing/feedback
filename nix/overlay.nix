@@ -14,7 +14,7 @@ with final.haskell.lib;
   haskellPackages = prev.haskellPackages.override (old: {
     overrides = composeExtensions (old.overrides or (_: _: { })) (
       self: super: {
-        feedback = generateOptparseApplicativeCompletion "feedback" (
+        feedback = self.generateOptparseApplicativeCompletions [ "feedback" ] (
           buildFromSdist (overrideCabal
             (
               self.callPackage

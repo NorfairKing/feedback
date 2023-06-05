@@ -250,17 +250,18 @@ putOutput OutputSettings {..} terminalCapabilities loopBegin =
         OutputWatching -> put [indicatorChunk "watching"]
         OutputEvent restartEvent -> do
           put $
-            indicatorChunk "event:" :
-            " " : case restartEvent of
-              FSEvent fsEvent ->
-                [ case fsEvent of
-                    Added {} -> fore green " added    "
-                    Modified {} -> fore yellow " modified "
-                    Removed {} -> fore red " removed  "
-                    Unknown {} -> " unknown  ",
-                  chunk $ T.pack $ eventPath fsEvent
-                ]
-              StdinEvent c -> [fore magenta "manual restart: ", chunk $ T.pack $ show c]
+            indicatorChunk "event:"
+              : " "
+              : case restartEvent of
+                FSEvent fsEvent ->
+                  [ case fsEvent of
+                      Added {} -> fore green " added    "
+                      Modified {} -> fore yellow " modified "
+                      Removed {} -> fore red " removed  "
+                      Unknown {} -> " unknown  ",
+                    chunk $ T.pack $ eventPath fsEvent
+                  ]
+                StdinEvent c -> [fore magenta "manual restart: ", chunk $ T.pack $ show c]
         OutputKilling -> put [indicatorChunk "killing"]
         OutputKilled -> put [indicatorChunk "killed"]
         OutputProcessStarted runSettings -> do

@@ -55,13 +55,13 @@ makeProcessConfigFor RunSettings {..} = do
 
       pure $ fromAbsFile scriptFile
 
-  pure $
-    setStdout inherit
+  pure
+    $ setStdout inherit
       . setStderr inherit
       . setStdin nullStream -- TODO make this configurable?
       . setEnv envForProcess
       . maybe id (setWorkingDir . fromAbsDir) runSettingWorkingDir
-      $ shell commandString
+    $ shell commandString
 
 stopProcessHandle :: ProcessHandle -> IO ()
 stopProcessHandle ProcessHandle {..} = do

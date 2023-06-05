@@ -65,16 +65,16 @@ startingLines RunSettings {..} =
           if null runSettingExtraEnv
             then []
             else
-              [indicatorChunk "extra env:"] :
-              map
-                ( \(k, v) ->
-                    [ "  ",
-                      fore blue $ chunk (T.pack k),
-                      ": ",
-                      fore blue $ chunk (T.pack v)
-                    ]
-                )
-                (M.toList runSettingExtraEnv)
+              [indicatorChunk "extra env:"]
+                : map
+                  ( \(k, v) ->
+                      [ "  ",
+                        fore blue $ chunk (T.pack k),
+                        ": ",
+                        fore blue $ chunk (T.pack v)
+                      ]
+                  )
+                  (M.toList runSettingExtraEnv)
         ]
 
 exitCodeChunks :: ExitCode -> [Chunk]
@@ -95,5 +95,6 @@ durationChunks nanosecs =
    in [ indicatorChunk "took",
         " ",
         chunk $
-          T.pack $ printf "%4.2fs" diffTime
+          T.pack $
+            printf "%4.2fs" diffTime
       ]
