@@ -14,6 +14,8 @@
     autodocodec.flake = false;
     safe-coloured-text.url = "github:NorfairKing/safe-coloured-text";
     safe-coloured-text.flake = false;
+    fast-myers-diff.url = "github:NorfairKing/fast-myers-diff";
+    fast-myers-diff.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
     dekking.url = "github:NorfairKing/dekking";
@@ -27,6 +29,7 @@
     , validity
     , safe-coloured-text
     , sydtest
+    , fast-myers-diff
     , autodocodec
     , dekking
     }:
@@ -40,6 +43,7 @@
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
+          (import (fast-myers-diff + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
         ];
