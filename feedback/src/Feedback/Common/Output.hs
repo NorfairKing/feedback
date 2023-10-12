@@ -45,12 +45,6 @@ startingLines RunSettings {..} =
   let RunSettings _ _ _ = undefined
    in concat
         [ case runSettingCommand of
-            CommandArgs command ->
-              [ [ indicatorChunk "starting",
-                  " ",
-                  commandChunk command
-                ]
-              ]
             CommandScript script ->
               [ [ indicatorChunk "starting script\n",
                   chunk $ T.pack script

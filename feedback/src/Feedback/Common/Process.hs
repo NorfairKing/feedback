@@ -42,7 +42,6 @@ makeProcessConfigFor RunSettings {..} = do
   let envForProcess = M.toList $ M.union runSettingExtraEnv (M.fromList env)
   -- Set up the command
   commandString <- case runSettingCommand of
-    CommandArgs c -> pure c
     CommandScript s -> do
       -- Write the script to a file
       systemTempDir <- getTempDir

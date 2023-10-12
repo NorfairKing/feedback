@@ -46,7 +46,7 @@ spec =
         let cp =
               setStdout nullStream
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--", "bash", "-c", "echo hi >" <> fromAbsFile resultFile]
+                $ proc "feedback" ["--", "bash", "-c", "'echo hi >" <> fromAbsFile resultFile <> "'"]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -70,7 +70,7 @@ spec =
               setStdout nullStream
                 . setStdin (useHandleOpen slaveHandle)
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
+                $ proc "feedback" ["--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -105,7 +105,7 @@ spec =
               setStdout nullStream
                 . setStdin (useHandleOpen slaveHandle)
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
+                $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -164,7 +164,7 @@ spec =
             setStdout nullStream
               . setStdin (useHandleOpen slaveHandle)
               . setWorkingDir (fromAbsDir tdir)
-              $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
+              $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
       withProcessKill cp $ \ph -> do
         waitABit
 
@@ -274,7 +274,7 @@ spec =
             mExitCode `shouldBe` Nothing
 
 withProcessKill :: ProcessConfig stdin stderr stdout -> (Process stdin stderr stdout -> IO a) -> IO a
-withProcessKill cp func = withProcessWait cp $ \ph ->
+withProcessKill cp func = withProcessWait cp $ \ph -> do
   func ph `finally` killProcessHandle ph
 
 killProcessHandle :: Process stdin stdout stderr -> IO ()

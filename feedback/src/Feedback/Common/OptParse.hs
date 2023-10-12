@@ -146,13 +146,13 @@ instance HasCodec LoopConfiguration where
           "* Hooks configuration: What to around commands"
         ]
       f = \case
-        Left s -> makeLoopConfiguration (CommandArgs s)
+        Left s -> makeLoopConfiguration (CommandScript s)
         Right loopConfig -> loopConfig
       g loopConfig =
         let runConfig = loopConfigRunConfiguration loopConfig
             c = runConfigCommand runConfig
          in case c of
-              CommandArgs cmd | loopConfig == makeLoopConfiguration c -> Left cmd
+              CommandScript cmd | loopConfig == makeLoopConfiguration c -> Left cmd
               _ -> Right loopConfig
 
 loopConfigurationObjectCodec :: JSONObjectCodec LoopConfiguration
@@ -204,12 +204,12 @@ instance HasCodec RunConfiguration where
           (object "RunConfiguration" runConfigurationObjectCodec)
     where
       f = \case
-        Left s -> makeRunConfiguration (CommandArgs s)
+        Left s -> makeRunConfiguration (CommandScript s)
         Right loopConfig -> loopConfig
       g runConfig =
         let c = runConfigCommand runConfig
          in case c of
-              CommandArgs cmd | runConfig == makeRunConfiguration c -> Left cmd
+              CommandScript cmd | runConfig == makeRunConfiguration c -> Left cmd
               _ -> Right runConfig
 
 runConfigurationObjectCodec :: JSONObjectCodec RunConfiguration
@@ -420,15 +420,7 @@ parseCommandFlags =
                 completer (listIOCompleter defaultConfigFileCompleter)
               ]
           )
-      escapeChar = \case
-        '"' -> "\\\""
-        '\'' -> "\\\'"
-        c -> [c]
-      quote = ("\"" <>) . (<> "\"") . concatMap escapeChar
-      quoteIfNecessary "" = quote ""
-      quoteIfNecessary s = if ' ' `elem` s then quote s else s
-      pieceBackTogether = unwords . map quoteIfNecessary
-   in pieceBackTogether <$> many commandArg
+   in unwords <$> many commandArg
 
 defaultConfigFileCompleter :: IO [String]
 defaultConfigFileCompleter = do
@@ -447,24 +439,17 @@ parseOutputFlags =
           ]
       )
 
-data Command
-  = CommandArgs !String
-  | CommandScript !String
+newtype Command = CommandScript {unScript :: String}
   deriving (Show, Eq, Generic)
+
+instance HasCodec Command where
+  codec = dimapCodec CommandScript unScript codec
 
 commandObjectCodec :: JSONObjectCodec Command
 commandObjectCodec =
-  dimapCodec f g $
-    eitherCodec
-      (requiredField "command" "the command to run on change")
-      (requiredField "script" "the script to run on change")
-  where
-    f = \case
-      Left c -> CommandArgs c
-      Right s -> CommandScript s
-    g = \case
-      CommandArgs c -> Left c
-      CommandScript s -> Right s
+  parseAlternative
+    (requiredField "script" "the script to run on change")
+    (requiredField "command" "the command to run on change (alias for 'script' for backward compatibility)")
 
 data Clear = ClearScreen | DoNotClearScreen
   deriving (Show, Eq, Generic)
