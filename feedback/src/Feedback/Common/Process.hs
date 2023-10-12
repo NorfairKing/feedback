@@ -46,7 +46,9 @@ makeProcessConfigFor RunSettings {..} = do
     CommandScript s -> do
       -- Write the script to a file
       systemTempDir <- getTempDir
-      scriptFile <- resolveFile systemTempDir "feedback-script.sh"
+      ensureDir systemTempDir
+      tempDir <- createTempDir systemTempDir "feedback"
+      scriptFile <- resolveFile tempDir "feedback-script.sh"
       writeBinaryFileDurableAtomic (fromAbsFile scriptFile) (TE.encodeUtf8 (T.pack s))
       -- Make the script executable
       oldPermissions <- getPermissions scriptFile

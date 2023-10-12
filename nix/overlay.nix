@@ -15,18 +15,13 @@ with final.haskell.lib;
     overrides = composeExtensions (old.overrides or (_: _: { })) (
       self: super: {
         feedback = self.generateOptparseApplicativeCompletions [ "feedback" ] (
-          buildFromSdist (overrideCabal
-            (
-              self.callPackage
-                ../feedback
-                { }
-            )
+          buildFromSdist (overrideCabal (self.callPackage ../feedback { })
             (old: {
               doBenchmark = true;
               doHaddock = true;
               doCoverage = false;
               doHoogle = true;
-              doCheck = false;
+              doCheck = false; # Only in coverage report
               hyperlinkSource = false;
               enableLibraryProfiling = false;
               enableExecutableProfiling = false;
@@ -53,7 +48,7 @@ with final.haskell.lib;
             ];
             # Ugly hack because we can't just add flags to the 'test' invocation.
             # Show test output as we go, instead of all at once afterwards.
-            testTarget = (old.testTarget or "") + " --show-details=direct";
+            testTarget = (old.testTarget or "") + " --show-details=direct --test-options=--debug";
           }));
       }
     );

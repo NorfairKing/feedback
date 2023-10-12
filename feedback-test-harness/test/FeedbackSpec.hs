@@ -3,104 +3,169 @@
 
 module FeedbackSpec (spec) where
 
+import Autodocodec.Yaml as Yaml
 import Control.Concurrent
 import qualified Data.ByteString as SB
+import qualified Data.Map as M
+import Feedback.Common.OptParse
 import Path
 import Path.IO
-import System.IO
-import System.Posix (fdToHandle, openPseudoTerminal)
+import System.IO (hPutChar)
+import System.Posix (fdToHandle, openPseudoTerminal, sigKILL, signalProcess)
+import System.Process (getPid)
 import System.Process.Typed
 import Test.Syd
-import Test.Syd.Path
+import UnliftIO
+import UnliftIO.IO.File
 
 spec :: Spec
-spec = sequential . tempDirSpec "feedback" . coverageSpec $ do
-  let waitABit = threadDelay 250_000 -- Wait 250 ms
-  it "can show help text" $ \tdir -> do
-    let cp =
-          setStdout nullStream
-            . setWorkingDir (fromAbsDir tdir)
-            $ proc "feedback" ["--help"]
-    runProcess_ cp :: IO ()
-
-  it "can start a loop and wait for input" $ \tdir -> do
-    let cp =
-          setStdout nullStream
-            . setWorkingDir (fromAbsDir tdir)
-            $ proc "feedback" ["echo", "hi"]
-    withProcessTerm cp $ \ph -> do
-      waitABit
-      -- If the program is still running after 100ms, we assume that it is waiting.
-      mExitCode <- getExitCode ph
-      mExitCode `shouldBe` Nothing
-
-  it "can run a command once, wait for input" $ \tdir ->
-    withSystemTempDir "somewhere-else" $ \otherTDir -> do
-      resultFile <- resolveFile otherTDir "result" -- In another dir so the loop doesn't rerun automatically
+spec =
+  -- We need sequential because commands 'feedback' is run and produces a coverage.dat in the tempdir
+  sequential . doNotRandomiseExecutionOrder . coverageSpec $ do
+    it "can show help text" $ \tdir -> do
       let cp =
             setStdout nullStream
               . setWorkingDir (fromAbsDir tdir)
-              $ proc "feedback" ["--", "bash", "-c", "echo hi >" <> fromAbsFile resultFile]
-      withProcessTerm cp $ \ph -> do
+              $ proc "feedback" ["--help"]
+      runProcess_ cp :: IO ()
+
+    it "can start a loop and wait for input" $ \tdir -> do
+      let cp =
+            setStdout nullStream
+              . setWorkingDir (fromAbsDir tdir)
+              $ proc "feedback" ["echo", "hi"]
+      withProcessKill cp $ \ph -> do
         waitABit
-
-        result <- SB.readFile (fromAbsFile resultFile)
-        result `shouldBe` "hi\n"
-
         -- If the program is still running after 100ms, we assume that it is waiting.
         mExitCode <- getExitCode ph
         mExitCode `shouldBe` Nothing
 
-  it "can run a command once, wait for manual input, and run it again upon input, and then still be running" $ \tdir ->
-    withSystemTempDir "somewhere-else" $ \otherTDir -> do
-      -- In another dir so the loop doesn't rerun automatically
-      dateFile <- resolveFile otherTDir "datefile"
+    it "can run a command once, wait for input" $ \tdir ->
+      withSystemTempDir "somewhere-else" $ \otherTDir -> do
+        resultFile <- resolveFile otherTDir "result.txt" -- In another dir so the loop doesn't rerun automatically
+        let cp =
+              setStdout nullStream
+                . setWorkingDir (fromAbsDir tdir)
+                $ proc "feedback" ["--", "bash", "-c", "echo hi >" <> fromAbsFile resultFile]
+        withProcessKill cp $ \ph -> do
+          waitABit
 
-      (masterFd, slaveFd) <- openPseudoTerminal
-      masterHandle <- fdToHandle masterFd
-      slaveHandle <- fdToHandle slaveFd
+          result <- SB.readFile (fromAbsFile resultFile)
+          result `shouldBe` "hi\n"
 
-      let cp =
-            setStdout nullStream
-              . setStdin (useHandleOpen slaveHandle)
-              . setWorkingDir (fromAbsDir tdir)
-              $ proc "feedback" ["--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
-      withProcessTerm cp $ \ph -> do
-        waitABit
+          -- If the program is still running after 100ms, we assume that it is waiting.
+          mExitCode <- getExitCode ph
+          mExitCode `shouldBe` Nothing
 
-        -- Feedback is running.
-        mExitCode <- getExitCode ph
-        mExitCode `shouldBe` Nothing
+    it "can run a command once, wait for manual input, and run it again upon input, and then still be running" $ \tdir ->
+      withSystemTempDir "somewhere-else" $ \otherTDir -> do
+        -- In another dir so the loop doesn't rerun automatically
+        dateFile <- resolveFile otherTDir "datefile"
 
-        beforeContents <- SB.readFile (fromAbsFile dateFile)
+        (masterFd, slaveFd) <- openPseudoTerminal
+        masterHandle <- fdToHandle masterFd
+        slaveHandle <- fdToHandle slaveFd
 
-        hPutChar masterHandle 'r'
-        hFlush masterHandle
+        let cp =
+              setStdout nullStream
+                . setStdin (useHandleOpen slaveHandle)
+                . setWorkingDir (fromAbsDir tdir)
+                $ proc "feedback" ["--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
+        withProcessKill cp $ \ph -> do
+          waitABit
 
-        waitABit
+          -- Feedback is running.
+          mExitCode <- getExitCode ph
+          mExitCode `shouldBe` Nothing
 
-        afterContents <- SB.readFile (fromAbsFile dateFile)
-        afterContents `shouldNotBe` beforeContents
+          beforeContents <- SB.readFile (fromAbsFile dateFile)
 
-  it "can run a command once, wait for a file to change, and run it again upon input, and then still be running" $ \tdir ->
-    withSystemTempDir "somewhere-else" $ \otherTDir -> do
-      -- In another dir so the loop doesn't rerun automatically
-      dateFile <- resolveFile otherTDir "datefile"
+          hPutChar masterHandle 'r'
+          hFlush masterHandle
 
-      -- In the same dir so the loop reruns when we change it
-      triggerFile <- resolveFile tdir "trigger"
-      SB.writeFile (fromAbsFile triggerFile) "initial"
+          waitABit
+
+          afterContents <- SB.readFile (fromAbsFile dateFile)
+          afterContents `shouldNotBe` beforeContents
+
+    it "can run a command once, wait for a file to change, and run it again upon input, and then still be running" $ \tdir ->
+      withSystemTempDir "somewhere-else" $ \otherTDir -> do
+        -- In another dir so the loop doesn't rerun automatically
+        dateFile <- resolveFile otherTDir "datefile"
+
+        -- In the same dir so the loop reruns when we change it
+        triggerFile <- resolveFile tdir "trigger"
+        SB.writeFile (fromAbsFile triggerFile) "initial"
+
+        (_, slaveFd) <- openPseudoTerminal
+        -- masterHandle <- fdToHandle masterFd
+        slaveHandle <- fdToHandle slaveFd
+
+        let cp =
+              setStdout nullStream
+                . setStdin (useHandleOpen slaveHandle)
+                . setWorkingDir (fromAbsDir tdir)
+                $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
+        withProcessKill cp $ \ph -> do
+          waitABit
+
+          -- Feedback is running.
+          mExitCode <- getExitCode ph
+          mExitCode `shouldBe` Nothing
+
+          -- Make sure the file exists now
+          beforeContents <- SB.readFile (fromAbsFile dateFile)
+
+          -- Change the trigger file, this should cause the loop to rerun.
+          SB.writeFile (fromAbsFile triggerFile) "go go go"
+
+          -- Make sure the loop is rerun
+          waitABit
+
+          -- Make sure the loop is rerun
+          afterContents <- SB.readFile (fromAbsFile dateFile)
+          afterContents `shouldNotBe` beforeContents
+
+    it "can run in a git repository and ignore .gitignored files" $ \tdir -> do
+      -- Set up the repository
+      let runGit args =
+            runProcess_
+              $ setEnv []
+                . setStdout nullStream
+                . setStderr nullStream
+                . setWorkingDir (fromAbsDir tdir)
+              $ proc "git" args
+
+      runGit ["init"]
+      runGit ["config", "user.email", "you@example.com"]
+      runGit ["config", "user.name", "Your Name"]
+
+      notIgnoredFile <- resolveFile tdir "file.not-ignored"
+      ignoredFile <- resolveFile tdir "file.ignored"
+
+      gitignoreFile <- resolveFile tdir ".gitignore"
+      SB.writeFile (fromAbsFile gitignoreFile) "*.ignored"
+
+      runGit ["add", "."]
+      runGit ["commit", "-m", "Initial commit"]
+
+      SB.writeFile (fromAbsFile notIgnoredFile) "foo"
+      SB.writeFile (fromAbsFile ignoredFile) "bar"
+
+      runGit ["add", "."]
+      runGit ["commit", "-m", "commit with files."]
 
       (_, slaveFd) <- openPseudoTerminal
       -- masterHandle <- fdToHandle masterFd
       slaveHandle <- fdToHandle slaveFd
 
+      dateFile <- resolveFile tdir "datefile.ignored"
       let cp =
             setStdout nullStream
               . setStdin (useHandleOpen slaveHandle)
               . setWorkingDir (fromAbsDir tdir)
               $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
-      withProcessTerm cp $ \ph -> do
+      withProcessKill cp $ \ph -> do
         waitABit
 
         -- Feedback is running.
@@ -110,8 +175,18 @@ spec = sequential . tempDirSpec "feedback" . coverageSpec $ do
         -- Make sure the file exists now
         beforeContents <- SB.readFile (fromAbsFile dateFile)
 
-        -- Change the trigger file, this should cause the loop to rerun.
-        SB.writeFile (fromAbsFile triggerFile) "go go go"
+        -- Change the ignored file file, this should _not_ cause the loop to rerun.
+        SB.writeFile (fromAbsFile ignoredFile) "go go go"
+
+        -- Make sure the loop is rerun
+        waitABit
+
+        -- Make sure the loop is rerun
+        middleContents <- SB.readFile (fromAbsFile dateFile)
+        middleContents `shouldBe` beforeContents
+
+        -- Change the not-ignored file file, this should cause the loop to rerun.
+        SB.writeFile (fromAbsFile notIgnoredFile) "go go go"
 
         -- Make sure the loop is rerun
         waitABit
@@ -120,69 +195,92 @@ spec = sequential . tempDirSpec "feedback" . coverageSpec $ do
         afterContents <- SB.readFile (fromAbsFile dateFile)
         afterContents `shouldNotBe` beforeContents
 
-  it "can run in a git repository and ignore .gitignored files" $ \tdir -> do
-    -- Set up the repository
-    let runGit args =
-          runProcess_ $ setEnv [] $ setWorkingDir (fromAbsDir tdir) $ proc "git" args
+    xdescribe "fails for unknown reason inside nix build" $
+      it "can run a command, the 'before-all' hook will have run before" $ \tdir ->
+        withSystemTempDir "somewhere-else" $ \otherTDir -> do
+          resultFile <- resolveFile otherTDir "result.txt" -- In another dir so the loop doesn't rerun automatically
+          configFile <- resolveFile tdir "config.yaml"
+          writeBinaryFileDurableAtomic (fromAbsFile configFile) $
+            encodeYamlViaCodec $
+              emptyConfiguration
+                { configLoops =
+                    M.singleton "sleep" $
+                      (makeLoopConfiguration (CommandScript "sleep 5"))
+                        { loopConfigHooksConfiguration =
+                            emptyHooksConfiguration
+                              { hooksConfigurationBeforeAll =
+                                  Just $
+                                    makeRunConfiguration
+                                      (CommandScript ("echo hi > " <> fromAbsFile resultFile))
+                              }
+                        }
+                }
+          let cp =
+                setStdout nullStream
+                  . setWorkingDir (fromAbsDir tdir)
+                  $ proc
+                    "feedback"
+                    [ "--config-file",
+                      fromAbsFile configFile,
+                      "sleep"
+                    ]
+          withProcessKill cp $ \ph -> do
+            waitABit
 
-    runGit ["init"]
-    runGit ["config", "user.email", "you@example.com"]
-    runGit ["config", "user.name", "Your Name"]
+            result <- SB.readFile (fromAbsFile resultFile)
+            result `shouldBe` "hi\n"
 
-    notIgnoredFile <- resolveFile tdir "file.not-ignored"
-    ignoredFile <- resolveFile tdir "file.ignored"
+            -- If the program is still running after 100ms, we assume that it is still sleeping.
+            mExitCode <- getExitCode ph
+            mExitCode `shouldBe` Nothing
 
-    gitignoreFile <- resolveFile tdir ".gitignore"
-    SB.writeFile (fromAbsFile gitignoreFile) "*.ignored"
+    xdescribe "fails for unknown reason inside nix build" $
+      it "can run a command once, wait for input. The after-first hook will have run after" $ \tdir ->
+        withSystemTempDir "somewhere-else" $ \otherTDir -> do
+          resultFile <- resolveFile otherTDir "result.txt" -- In another dir so the loop doesn't rerun automatically
+          configFile <- resolveFile tdir "config.yaml"
+          writeBinaryFileDurableAtomic (fromAbsFile configFile) $
+            encodeYamlViaCodec $
+              emptyConfiguration
+                { configLoops =
+                    M.singleton "say" $
+                      (makeLoopConfiguration (CommandScript "echo run"))
+                        { loopConfigHooksConfiguration =
+                            emptyHooksConfiguration
+                              { hooksConfigurationAfterFirst =
+                                  Just $
+                                    makeRunConfiguration
+                                      (CommandScript ("echo hi > " <> fromAbsFile resultFile))
+                              }
+                        }
+                }
+          let cp =
+                setStdout nullStream
+                  . setWorkingDir (fromAbsDir tdir)
+                  $ proc
+                    "feedback"
+                    [ "--config-file",
+                      fromAbsFile configFile,
+                      "say"
+                    ]
+          withProcessKill cp $ \ph -> do
+            waitABit
 
-    runGit ["add", "."]
-    runGit ["commit", "-m", "Initial commit"]
+            result <- SB.readFile (fromAbsFile resultFile)
+            result `shouldBe` "hi\n"
 
-    SB.writeFile (fromAbsFile notIgnoredFile) "foo"
-    SB.writeFile (fromAbsFile ignoredFile) "bar"
+            -- If the program is still running after 100ms, we assume that it is waiting.
+            mExitCode <- getExitCode ph
+            mExitCode `shouldBe` Nothing
 
-    runGit ["add", "."]
-    runGit ["commit", "-m", "commit with files."]
+withProcessKill :: ProcessConfig stdin stderr stdout -> (Process stdin stderr stdout -> IO a) -> IO a
+withProcessKill cp func = withProcessWait cp $ \ph ->
+  func ph `finally` killProcessHandle ph
 
-    (_, slaveFd) <- openPseudoTerminal
-    -- masterHandle <- fdToHandle masterFd
-    slaveHandle <- fdToHandle slaveFd
-
-    dateFile <- resolveFile tdir "datefile.ignored"
-    let cp =
-          setStdout nullStream
-            . setStdin (useHandleOpen slaveHandle)
-            . setWorkingDir (fromAbsDir tdir)
-            $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "date +%N >" <> fromAbsFile dateFile]
-    withProcessTerm cp $ \ph -> do
-      waitABit
-
-      -- Feedback is running.
-      mExitCode <- getExitCode ph
-      mExitCode `shouldBe` Nothing
-
-      -- Make sure the file exists now
-      beforeContents <- SB.readFile (fromAbsFile dateFile)
-
-      -- Change the ignored file file, this should _not_ cause the loop to rerun.
-      SB.writeFile (fromAbsFile ignoredFile) "go go go"
-
-      -- Make sure the loop is rerun
-      waitABit
-
-      -- Make sure the loop is rerun
-      middleContents <- SB.readFile (fromAbsFile dateFile)
-      middleContents `shouldBe` beforeContents
-
-      -- Change the not-ignored file file, this should cause the loop to rerun.
-      SB.writeFile (fromAbsFile notIgnoredFile) "go go go"
-
-      -- Make sure the loop is rerun
-      waitABit
-
-      -- Make sure the loop is rerun
-      afterContents <- SB.readFile (fromAbsFile dateFile)
-      afterContents `shouldNotBe` beforeContents
+killProcessHandle :: Process stdin stdout stderr -> IO ()
+killProcessHandle ph = do
+  mPid <- getPid (unsafeProcessHandle ph)
+  mapM_ (signalProcess sigKILL) mPid
 
 -- It's really annoying that this is necessary, but hear me out.
 -- `feedback` is run in a tempdir.
@@ -191,14 +289,20 @@ spec = sequential . tempDirSpec "feedback" . coverageSpec $ do
 -- We have to copy back the coverage info in order to make the coverage report.
 --
 -- It's slow and dirty but it works.
-coverageSpec :: SpecWith (Path Abs Dir) -> SpecWith (Path Abs Dir)
-coverageSpec = after $ \tdir -> do
-  specificCoverageFile <- resolveFile tdir "coverage.dat"
+coverageSpec :: SpecWith (Path Abs Dir) -> Spec
+coverageSpec = around $ \useTmpdir -> do
   topLevelCoverageFile <- resolveFile' "coverage.dat"
-  mSpecificCoverage <- forgivingAbsence $ SB.readFile (fromAbsFile specificCoverageFile)
+  mSpecificCoverage <- withSystemTempDir "feedback-test-harness" $ \tdir -> do
+    specificCoverageFile <- resolveFile tdir "coverage.dat"
+    useTmpdir tdir
+    forgivingAbsence $ SB.readFile (fromAbsFile specificCoverageFile)
   mTopLevelCoverage <- forgivingAbsence $ SB.readFile (fromAbsFile topLevelCoverageFile)
-  SB.writeFile (fromAbsFile topLevelCoverageFile) $ case (mTopLevelCoverage, mSpecificCoverage) of
-    (Nothing, Nothing) -> mempty
-    (Just topLevelCoverage, Nothing) -> topLevelCoverage
-    (Nothing, Just specificCoverage) -> specificCoverage
-    (Just topLevelCoverage, Just specificCoverage) -> topLevelCoverage <> specificCoverage
+  writeBinaryFileDurableAtomic (fromAbsFile topLevelCoverageFile) $
+    case (mTopLevelCoverage, mSpecificCoverage) of
+      (Nothing, Nothing) -> mempty
+      (Just topLevelCoverage, Nothing) -> topLevelCoverage
+      (Nothing, Just specificCoverage) -> specificCoverage
+      (Just topLevelCoverage, Just specificCoverage) -> topLevelCoverage <> specificCoverage
+
+waitABit :: IO ()
+waitABit = threadDelay 250_000 -- Wait 250 ms

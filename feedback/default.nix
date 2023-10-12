@@ -7,7 +7,7 @@
 }:
 mkDerivation {
   pname = "feedback";
-  version = "0.1.0.1";
+  version = "0.1.0.2";
   src = ./.;
   isLibrary = true;
   isExecutable = true;

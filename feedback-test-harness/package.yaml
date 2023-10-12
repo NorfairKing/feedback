@@ -28,10 +28,16 @@ tests:
     - -with-rtsopts=-N
     - -Wall
     dependencies:
+    - autodocodec-yaml
     - bytestring
+    - containers
+    - feedback
     - feedback-test-harness
+    - filelock
     - path
     - path-io
+    - process
     - sydtest
     - typed-process
     - unix
+    - unliftio
