@@ -382,7 +382,7 @@ flagsParser =
         ]
 
 data Flags = Flags
-  { flagCommand :: !String,
+  { flagCommand :: !(Maybe Command),
     flagConfigFile :: !(Maybe FilePath),
     flagOutputFlags :: !OutputFlags
   }
@@ -410,12 +410,18 @@ parseFlags =
       )
     <*> parseOutputFlags
 
-parseCommandFlags :: OptParse.Parser String
+parseCommandFlags :: OptParse.Parser (Maybe Command)
 parseCommandFlags =
+  optional $
+    CommandArgs <$> parseArgumentsAsCommand
+      <|> CommandScript <$> parseScriptArgument
+
+parseArgumentsAsCommand :: OptParse.Parser String
+parseArgumentsAsCommand =
   let commandArg =
         strArgument
           ( mconcat
-              [ help "The command to run",
+              [ help "The command to run; This will be executed directly instead of as a script. Use --script if you want to run a script instead.",
                 metavar "COMMAND",
                 completer (listIOCompleter defaultConfigFileCompleter)
               ]
@@ -428,12 +434,23 @@ parseCommandFlags =
       quoteIfNecessary "" = quote ""
       quoteIfNecessary s = if ' ' `elem` s then quote s else s
       pieceBackTogether = unwords . map quoteIfNecessary
-   in pieceBackTogether <$> many commandArg
+   in pieceBackTogether <$> some commandArg
 
 defaultConfigFileCompleter :: IO [String]
 defaultConfigFileCompleter = do
   mConfig <- defaultConfigFile >>= getConfigurationFromFile
   pure $ M.keys (maybe [] configLoops mConfig)
+
+parseScriptArgument :: OptParse.Parser String
+parseScriptArgument =
+  strOption
+    ( mconcat
+        [ short 's',
+          long "script",
+          metavar "SCRIPT",
+          help "Script argument; This will be put in a script file and executed instead of executed directly."
+        ]
+    )
 
 parseOutputFlags :: OptParse.Parser OutputFlags
 parseOutputFlags =

@@ -23,8 +23,9 @@ data TestSettings = TestSettings
 combineToTestSettings :: Flags -> Environment -> Maybe Configuration -> IO TestSettings
 combineToTestSettings flags@Flags {..} environment mConf = do
   let filterFunc = case flagCommand of
-        "" -> id
-        _ -> M.filterWithKey (\k _ -> k == flagCommand)
+        Nothing -> id
+        Just (CommandArgs s) -> M.filterWithKey (\k _ -> k == s)
+        Just (CommandScript _) -> id
   testSettingLoops <-
     traverse
       (combineToLoopSettings flags environment (mConf >>= configOutputConfiguration))

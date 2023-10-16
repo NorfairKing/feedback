@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -20,10 +21,10 @@ import Text.Show.Pretty (pPrint)
 combineToSettings :: Flags -> Environment -> Maybe Configuration -> IO LoopSettings
 combineToSettings flags@Flags {..} environment mConf = do
   let loops = maybe M.empty configLoops mConf
-  mLoopConfig <- case flagCommand of
-    "" -> pure Nothing
-    _ ->
-      Just <$> case M.lookup flagCommand loops of
+  mLoopConfig <- forM flagCommand $ \case
+    CommandScript script -> pure $ makeLoopConfiguration $ CommandScript script
+    CommandArgs arg ->
+      case M.lookup arg loops of
         Nothing -> do
           when (not (null loops)) $
             putStrLn $
@@ -32,7 +33,7 @@ combineToSettings flags@Flags {..} environment mConf = do
                   show flagCommand <> ",",
                   "interpreting it as a standalone command."
                 ]
-          pure $ makeLoopConfiguration $ CommandArgs flagCommand
+          pure $ makeLoopConfiguration $ CommandArgs arg
         Just config -> do
           putStrLn $
             unwords
