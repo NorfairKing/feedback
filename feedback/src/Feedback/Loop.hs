@@ -55,16 +55,20 @@ runFeedbackLoop = do
   -- being killed by the user.
   mainThreadId <- myThreadId
 
-  -- Make sure the user knows what's happening.
-  firstBegin <- getZonedTime
-  putTimedChunks terminalCapabilities firstBegin [indicatorChunk "preparing for first run"]
-
   -- Get the flags and the environment up front, because they don't change
   -- anyway.
   -- This is also important because autocompletion won't work if we output
   -- something before parsing the flags.
   flags <- getFlags
   env <- getEnvironment
+
+  -- Make sure the user knows what's happening.
+  -- Note that this this must occur after the getFlags so that nothing is
+  -- output before the autocompletion options can be activated.
+  -- Otherwise the autocompletion output will fail to parse and autocomplete
+  -- breaks.
+  firstBegin <- getZonedTime
+  putTimedChunks terminalCapabilities firstBegin [indicatorChunk "preparing for first run"]
 
   -- Get the initial configuration so that we know if we need to run a hook after the first run.
   mInitialConfiguration <- getConfiguration flags env
