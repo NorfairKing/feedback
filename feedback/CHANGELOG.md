@@ -6,3 +6,7 @@
 
 * Hooks: `before-all` and `after-first`
 * Short command-line options: `c` for `--config-file` and `d` for `--debug`.
+
+### Changed
+
+* Any commands are now treated as script and no longer extra-escaped.
