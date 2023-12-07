@@ -316,7 +316,10 @@ putOutput OutputSettings {..} terminalCapabilities loopBegin =
                       Added {} -> fore green " added    "
                       Modified {} -> fore yellow " modified "
                       Removed {} -> fore red " removed  "
-                      Unknown {} -> " unknown  ",
+                      Unknown {} -> " unknown  "
+                      ModifiedAttributes {} -> fore yellow " modified "
+                      WatchedDirectoryRemoved {} -> fore red " removed "
+                      CloseWrite {} -> fore yellow " modified ",
                     chunk $ T.pack $ eventPath fsEvent
                   ]
                 StdinEvent c -> [fore magenta "manual restart: ", chunk $ T.pack $ show c]
