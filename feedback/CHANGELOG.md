@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0.4] - 2024-01-18
+
+### Changed
+
+* Compatibility with `optparse-applicative >=1.18`
+
+
 ## [0.1.0.3] - 2023-11-11
 
 ### Changed

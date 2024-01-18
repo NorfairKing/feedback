@@ -20,7 +20,7 @@ import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
 import GHC.Generics (Generic)
 import Options.Applicative as OptParse
-import qualified Options.Applicative.Help as OptParse (string)
+import qualified Options.Applicative.Help as OptParse (pretty)
 import Path
 import Path.IO
 import Paths_feedback
@@ -367,7 +367,7 @@ flagsParser =
     ( mconcat
         [ OptParse.progDesc versionStr,
           OptParse.fullDesc,
-          OptParse.footerDoc (Just $ OptParse.string footerStr)
+          OptParse.footerDoc (Just $ OptParse.pretty footerStr)
         ]
     )
   where
