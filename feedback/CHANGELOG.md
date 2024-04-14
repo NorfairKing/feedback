@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.0.5] - 2024-04-15
+
+### Changed
+
+* Fixed a bug where loops were not killed correctly.
+  Now the loop commands end up in a process group and they are all stopped
+  together.
+
 ## [0.1.0.4] - 2024-01-18
 
 ### Changed
@@ -12,6 +20,7 @@
 ### Changed
 
 * Fixed the autocomplete
+
 
 ## [0.1.0.2] - 2023-10-12
 

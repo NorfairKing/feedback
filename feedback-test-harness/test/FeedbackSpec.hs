@@ -46,7 +46,7 @@ spec =
         let cp =
               setStdout nullStream
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--", "bash", "-c", "'echo hi >" <> fromAbsFile resultFile <> "'"]
+                $ proc "feedback" ["echo hi >" <> fromAbsFile resultFile]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -70,7 +70,7 @@ spec =
               setStdout nullStream
                 . setStdin (useHandleOpen slaveHandle)
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
+                $ proc "feedback" ["date +%N >" <> fromAbsFile dateFile]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -105,7 +105,7 @@ spec =
               setStdout nullStream
                 . setStdin (useHandleOpen slaveHandle)
                 . setWorkingDir (fromAbsDir tdir)
-                $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
+                $ proc "feedback" ["--no-clear", "--debug", "--", "date +%N >" <> fromAbsFile dateFile]
         withProcessKill cp $ \ph -> do
           waitABit
 
@@ -164,7 +164,7 @@ spec =
             setStdout nullStream
               . setStdin (useHandleOpen slaveHandle)
               . setWorkingDir (fromAbsDir tdir)
-              $ proc "feedback" ["--no-clear", "--debug", "--", "bash", "-c", "'date +%N >" <> fromAbsFile dateFile <> "'"]
+              $ proc "feedback" ["--no-clear", "--debug", "--", "date +%N >" <> fromAbsFile dateFile]
       withProcessKill cp $ \ph -> do
         waitABit
 

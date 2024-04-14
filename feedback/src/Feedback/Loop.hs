@@ -98,8 +98,7 @@ runFeedbackLoop = do
               eventChan
 
           -- Start the process and put output.
-          worker mainThreadId firstLoop loopSettings terminalCapabilities loopBegin eventChan
-            `finally` stopListeningAction
+          worker mainThreadId firstLoop loopSettings terminalCapabilities loopBegin eventChan stopListeningAction
 
   -- Do the first loop outside the 'forever' so we can run commands before and
   -- after the first loop.
@@ -184,6 +183,7 @@ worker ::
   TerminalCapabilities ->
   ZonedTime ->
   Chan FS.Event ->
+  IO () ->
   IO ()
 worker
   mainThreadId
@@ -191,7 +191,8 @@ worker
   LoopSettings {..}
   terminalCapabilities
   loopBegin
-  eventChan = do
+  eventChan
+  stopListeningAction = do
     let sendOutput :: Output -> IO ()
         sendOutput = putOutput loopSettingOutputSettings terminalCapabilities loopBegin
 
@@ -226,6 +227,10 @@ worker
     let handleEventHappened event = do
           -- Output the event that has fired
           sendOutput $ OutputEvent event
+          -- Output that we'll stop watching now
+          sendOutput OutputStopWatching
+          -- Stop watching
+          stopListeningAction
           -- Output that killing will start
           sendOutput OutputKilling
           -- Kill the process
@@ -250,6 +255,10 @@ worker
           -- Output the event that made the rerun happen
           event <- waitForEvent eventChan
           sendOutput $ OutputEvent event
+          -- Output that we'll stop watching now
+          sendOutput OutputStopWatching
+          -- Stop watching
+          stopListeningAction
 
     -- Either wait for it to finish or wait for an event
     eventOrDone <-
@@ -293,6 +302,7 @@ waitForEvent eventChan = do
 data Output
   = OutputFiltering
   | OutputWatching
+  | OutputStopWatching
   | OutputEvent !RestartEvent
   | OutputKilling
   | OutputKilled
@@ -306,6 +316,7 @@ putOutput OutputSettings {..} terminalCapabilities loopBegin =
    in \case
         OutputFiltering -> put [indicatorChunk "filtering"]
         OutputWatching -> put [indicatorChunk "watching"]
+        OutputStopWatching -> put [indicatorChunk "stop watching"]
         OutputEvent restartEvent -> do
           put $
             indicatorChunk "event:"

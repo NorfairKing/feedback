@@ -71,6 +71,7 @@
             nixpkgs-fmt.enable = true;
             nixpkgs-fmt.excludes = [ ".*/default.nix" ];
             cabal2nix.enable = true;
+            tagref.enable = true;
           };
         };
       };
@@ -91,6 +92,7 @@
             nixpkgs-fmt
             ormolu
             cabal2nix
+            tagref
           ]);
         shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
       };

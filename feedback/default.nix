@@ -1,20 +1,20 @@
 { mkDerivation, autodocodec, autodocodec-yaml, base, bytestring
 , conduit, containers, envparse, fsnotify, lib
-, optparse-applicative, path, path-io, pretty-show
+, optparse-applicative, path, path-io, pretty-show, process
 , safe-coloured-text, safe-coloured-text-layout
 , safe-coloured-text-terminfo, text, time, typed-process, unix
 , unliftio, yaml
 }:
 mkDerivation {
   pname = "feedback";
-  version = "0.1.0.4";
+  version = "0.1.0.5";
   src = ./.;
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
     autodocodec autodocodec-yaml base bytestring conduit containers
     envparse fsnotify optparse-applicative path path-io pretty-show
-    safe-coloured-text safe-coloured-text-layout
+    process safe-coloured-text safe-coloured-text-layout
     safe-coloured-text-terminfo text time typed-process unix unliftio
     yaml
   ];

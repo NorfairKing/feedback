@@ -1,5 +1,5 @@
 name: feedback
-version: 0.1.0.4
+version: 0.1.0.5
 github: "NorfairKing/feedback"
 license: GPL-3.0-only
 author: "Tom Sydney Kerckhove"
@@ -24,6 +24,7 @@ library:
   - path
   - path-io
   - pretty-show
+  - process
   - safe-coloured-text
   - safe-coloured-text-layout
   - text
