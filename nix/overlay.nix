@@ -19,7 +19,7 @@ with final.haskell.lib;
             (old: {
               doBenchmark = true;
               doHaddock = true;
-              doCoverage = false;
+              doCoverage = false; # No need because we use dekking
               doHoogle = true;
               doCheck = false; # Only in coverage report
               hyperlinkSource = false;
@@ -39,7 +39,17 @@ with final.haskell.lib;
                 "--ghc-options=-Wcpp-undef"
                 "--ghc-options=-Werror"
                 "--ghc-options=-optP-Wno-nonportable-include-path" # For macos
+              ] ++ optionals final.stdenv.hostPlatform.isMusl [
+                "--ghc-option=-static"
+                "--ghc-option=-optl=-static"
+                # Static
+                "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
+                "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
+                # for -ltinfo
+                "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
               ];
+              enableSharedExecutables = !final.stdenv.hostPlatform.isMusl;
+              enableSharedLibraries = !final.stdenv.hostPlatform.isMusl;
             })));
         feedback-test-harness = buildStrictly
           (overrideCabal (self.callPackage ../feedback-test-harness { }) (old: {

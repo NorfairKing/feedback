@@ -49,11 +49,15 @@
         ];
       };
       pkgs = pkgsFor nixpkgs;
+      muslPkgs = pkgs.pkgsMusl;
 
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
-      packages.${system}.default = pkgs.feedback;
+      packages.${system} = {
+        default = pkgs.feedback;
+        static = muslPkgs.feedback;
+      };
       checks.${system} = {
         release = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
