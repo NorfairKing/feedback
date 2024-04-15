@@ -18,7 +18,7 @@ getSettings = do
 data TestSettings = TestSettings
   { testSettingLoops :: !(Map String LoopSettings)
   }
-  deriving (Show, Eq)
+  deriving (Show)
 
 combineToTestSettings :: Flags -> Environment -> Maybe Configuration -> IO TestSettings
 combineToTestSettings flags@Flags {..} environment mConf = do

@@ -174,7 +174,6 @@ getTermCaps = pure WithoutColours
 data RestartEvent
   = FSEvent !FS.Event
   | StdinEvent !Char
-  deriving (Show, Eq)
 
 worker ::
   ThreadId ->
@@ -308,7 +307,6 @@ data Output
   | OutputKilled
   | OutputProcessStarted !RunSettings
   | OutputProcessExited !ExitCode !Word64
-  deriving (Show)
 
 putOutput :: OutputSettings -> TerminalCapabilities -> ZonedTime -> Output -> IO ()
 putOutput OutputSettings {..} terminalCapabilities loopBegin =

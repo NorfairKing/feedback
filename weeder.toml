@@ -1,0 +1,9 @@
+unused-types = true
+type-class-roots = false
+roots = [
+  # General
+  ".main$",
+  "^Paths_.*",
+]
+root-instances = [
+]

@@ -149,16 +149,6 @@ standardFilter here =
           ]
     }
 
-hidden :: Path Rel File -> Bool
-hidden = goFile
-  where
-    goFile :: Path Rel File -> Bool
-    goFile f = isHiddenIn (parent f) f || goDir (parent f)
-    goDir :: Path Rel Dir -> Bool
-    goDir f
-      | parent f == f = False
-      | otherwise = isHiddenIn (parent f) f || goDir (parent f)
-
 isHiddenIn :: Path b Dir -> Path b t -> Bool
 isHiddenIn curdir ad =
   case stripProperPrefix curdir ad of

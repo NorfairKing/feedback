@@ -8,6 +8,8 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-23.11";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
+    weeder-nix.url = "github:NorfairKing/weeder-nix";
+    weeder-nix.flake = false;
     validity.url = "github:NorfairKing/validity";
     validity.flake = false;
     autodocodec.url = "github:NorfairKing/autodocodec";
@@ -26,6 +28,7 @@
     { self
     , nixpkgs
     , pre-commit-hooks
+    , weeder-nix
     , validity
     , safe-coloured-text
     , sydtest
@@ -46,6 +49,7 @@
           (import (fast-myers-diff + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
+          (import (weeder-nix + "/nix/overlay.nix"))
         ];
       };
       pkgs = pkgsFor nixpkgs;
@@ -65,6 +69,10 @@
           name = "test-coverage-report";
           coverables = [ "feedback" ];
           coverage = [ "feedback-test-harness" ];
+        };
+        weeder-check = pkgs.weeder-nix.makeWeederCheck {
+          weederToml = ./weeder.toml;
+          packages = [ "feedback" "feedback-test-harness" ];
         };
         pre-commit = pre-commit-hooks.lib.${system}.run {
           src = ./.;

@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -16,9 +15,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
 import Data.Version
-import Data.Yaml (FromJSON, ToJSON)
 import qualified Env
-import GHC.Generics (Generic)
 import Options.Applicative as OptParse
 import qualified Options.Applicative.Help as OptParse (pretty)
 import Path
@@ -31,7 +28,7 @@ data LoopSettings = LoopSettings
     loopSettingOutputSettings :: !OutputSettings,
     loopSettingHooksSettings :: !HooksSettings
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show)
 
 combineToLoopSettings :: Flags -> Environment -> Maybe OutputConfiguration -> LoopConfiguration -> IO LoopSettings
 combineToLoopSettings Flags {..} Environment {} mDefaultOutputConfig LoopConfiguration {..} = do
@@ -48,7 +45,7 @@ data RunSettings = RunSettings
     runSettingExtraEnv :: !(Map String String),
     runSettingWorkingDir :: !(Maybe (Path Abs Dir))
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show)
 
 combineToRunSettings :: RunConfiguration -> IO RunSettings
 combineToRunSettings RunConfiguration {..} = do
@@ -61,7 +58,7 @@ data FilterSettings = FilterSettings
   { filterSettingGitignore :: !Bool,
     filterSettingFind :: !(Maybe String)
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show)
 
 combineToFilterSettings :: FilterConfiguration -> FilterSettings
 combineToFilterSettings FilterConfiguration {..} =
@@ -72,7 +69,7 @@ combineToFilterSettings FilterConfiguration {..} =
 data OutputSettings = OutputSettings
   { outputSettingClear :: !Clear
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show)
 
 combineToOutputSettings :: OutputFlags -> OutputConfiguration -> OutputSettings
 combineToOutputSettings OutputFlags {..} mConf =
@@ -85,7 +82,7 @@ data HooksSettings = HooksSettings
   { hooksSettingBeforeAll :: Maybe RunSettings,
     hooksSettingAfterFirst :: Maybe RunSettings
   }
-  deriving (Show, Eq, Generic)
+  deriving (Show)
 
 combineToHooksSettings :: HooksConfiguration -> IO HooksSettings
 combineToHooksSettings HooksConfiguration {..} = do
@@ -97,8 +94,6 @@ data Configuration = Configuration
   { configLoops :: !(Map String LoopConfiguration),
     configOutputConfiguration :: !(Maybe OutputConfiguration)
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec Configuration)
 
 instance HasCodec Configuration where
   codec =
@@ -123,8 +118,7 @@ data LoopConfiguration = LoopConfiguration
     loopConfigOutputConfiguration :: !OutputConfiguration,
     loopConfigHooksConfiguration :: !HooksConfiguration
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec LoopConfiguration)
+  deriving (Eq)
 
 instance HasCodec LoopConfiguration where
   codec =
@@ -192,8 +186,7 @@ data RunConfiguration = RunConfiguration
     runConfigExtraEnv :: !(Map String String),
     runConfigWorkingDir :: !(Maybe FilePath)
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec RunConfiguration)
+  deriving (Eq)
 
 instance HasCodec RunConfiguration where
   codec =
@@ -234,8 +227,7 @@ data FilterConfiguration = FilterConfiguration
   { filterConfigGitignore :: !(Maybe Bool),
     filterConfigFind :: !(Maybe String)
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec FilterConfiguration)
+  deriving (Eq)
 
 instance HasCodec FilterConfiguration where
   codec =
@@ -269,8 +261,7 @@ emptyFilterConfiguration =
 data OutputConfiguration = OutputConfiguration
   { outputConfigClear :: !(Maybe Clear)
   }
-  deriving stock (Show, Eq, Generic)
-  deriving (FromJSON, ToJSON) via (Autodocodec OutputConfiguration)
+  deriving (Eq)
 
 instance HasCodec OutputConfiguration where
   codec =
@@ -299,7 +290,7 @@ data HooksConfiguration = HooksConfiguration
   { hooksConfigurationBeforeAll :: !(Maybe RunConfiguration),
     hooksConfigurationAfterFirst :: !(Maybe RunConfiguration)
   }
-  deriving (Show, Eq, Generic)
+  deriving (Eq)
 
 instance HasCodec HooksConfiguration where
   codec =
@@ -339,7 +330,6 @@ defaultConfigFile = do
 data Environment = Environment
   { envConfigFile :: !(Maybe FilePath)
   }
-  deriving (Show, Eq, Generic)
 
 getEnvironment :: IO Environment
 getEnvironment = Env.parse (Env.header "Environment") environmentParser
@@ -386,13 +376,11 @@ data Flags = Flags
     flagConfigFile :: !(Maybe FilePath),
     flagOutputFlags :: !OutputFlags
   }
-  deriving (Show, Eq, Generic)
 
 data OutputFlags = OutputFlags
   { outputFlagClear :: !(Maybe Clear),
     outputFlagDebug :: Bool
   }
-  deriving (Show, Eq, Generic)
 
 parseFlags :: OptParse.Parser Flags
 parseFlags =
@@ -440,7 +428,7 @@ parseOutputFlags =
       )
 
 newtype Command = CommandScript {unScript :: String}
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 instance HasCodec Command where
   codec = dimapCodec CommandScript unScript codec
@@ -452,7 +440,7 @@ commandObjectCodec =
     (requiredField "command" "the command to run on change (alias for 'script' for backward compatibility)")
 
 data Clear = ClearScreen | DoNotClearScreen
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 instance HasCodec Clear where
   codec = dimapCodec f g codec

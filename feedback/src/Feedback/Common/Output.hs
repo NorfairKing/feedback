@@ -37,9 +37,6 @@ indicatorChunk = fore cyan . chunk . T.pack . printf "%-12s"
 loopNameChunk :: String -> Chunk
 loopNameChunk = fore yellow . chunk . T.pack
 
-commandChunk :: String -> Chunk
-commandChunk = fore blue . chunk . T.pack
-
 startingLines :: RunSettings -> [[Chunk]]
 startingLines RunSettings {..} =
   let RunSettings _ _ _ = undefined
