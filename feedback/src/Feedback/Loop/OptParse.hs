@@ -70,7 +70,7 @@ prettyConfiguration mConf = case mConf of
       [""],
       layoutAsTable
         ( map
-            (uncurry loopConfigLine)
+            (pure . uncurry loopConfigLine)
             (M.toList (configLoops conf))
         ),
       [fore blue "Run ", fore yellow "feedback loopname", fore blue " to activate a feedback loop."]

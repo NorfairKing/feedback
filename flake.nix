@@ -6,7 +6,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-23.11";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-24.05";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
     weeder-nix.url = "github:NorfairKing/weeder-nix";
     weeder-nix.flake = false;
@@ -89,24 +89,22 @@
       };
       devShells.${system}.default = pkgs.haskellPackages.shellFor {
         name = "feedback-shell";
-        packages = p: [ p.feedback p.feedback-test-harness ];
+        packages = p: [
+          p.feedback
+          # p.feedback-test-harness
+        ];
         withHoogle = true;
         doBenchmark = true;
-        buildInputs = (with pkgs; [
-          feedback
+        buildInputs = with pkgs; [
           niv
           zlib
           cabal-install
-        ]) ++ (with pre-commit-hooks.packages.${system};
-          [
-            hlint
-            hpack
-            nixpkgs-fmt
-            ormolu
-            cabal2nix
-            tagref
-          ]);
-        shellHook = self.checks.${system}.pre-commit.shellHook + pkgs.feedback.shellHook;
+        ] ++ self.checks.${system}.pre-commit.enabledPackages;
+        shellHook = self.checks.${system}.pre-commit.shellHook;
+      };
+      nix-ci.cachix = {
+        name = "feedback";
+        public-key = "feedback.cachix.org-1:8PNDEJ4GTCbsFUwxVWE/ulyoBMDqqL23JA44yB0j1jI=";
       };
     };
 }
