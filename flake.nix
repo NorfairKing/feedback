@@ -64,6 +64,7 @@
       };
       checks.${system} = {
         release = self.packages.${system}.default;
+        static = self.packages.${system}.static;
         shell = self.devShells.${system}.default;
         coverage-report = pkgs.dekking.makeCoverageReport {
           name = "test-coverage-report";
