@@ -59,12 +59,14 @@
     {
       overlays.${system} = import ./nix/overlay.nix;
       packages.${system} = {
-        default = pkgs.feedback;
+        default = self.packages.${system}.dynamic;
+        dynamic = pkgs.feedback;
         static = muslPkgs.feedback;
       };
       checks.${system} = {
         release = self.packages.${system}.default;
         static = self.packages.${system}.static;
+        dynamic = self.packages.${system}.dynamic;
         shell = self.devShells.${system}.default;
         coverage-report = pkgs.dekking.makeCoverageReport {
           name = "test-coverage-report";
@@ -97,7 +99,6 @@
         withHoogle = true;
         doBenchmark = true;
         buildInputs = with pkgs; [
-          niv
           zlib
           cabal-install
         ] ++ self.checks.${system}.pre-commit.enabledPackages;
