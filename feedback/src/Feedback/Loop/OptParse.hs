@@ -78,6 +78,7 @@ prettyConfiguration mConf = case mConf of
 
 loopConfigLine :: String -> LoopConfiguration -> [Chunk]
 loopConfigLine loopName LoopConfiguration {..} =
-  [ loopNameChunk $ loopName <> ":",
+  [ loopNameChunk loopName,
+    ": ",
     maybe "no description" (chunk . T.pack) loopConfigDescription
   ]
