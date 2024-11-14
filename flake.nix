@@ -53,20 +53,13 @@
         ];
       };
       pkgs = pkgsFor nixpkgs;
-      muslPkgs = pkgs.pkgsMusl;
 
     in
     {
       overlays.${system} = import ./nix/overlay.nix;
-      packages.${system} = {
-        default = self.packages.${system}.dynamic;
-        dynamic = pkgs.feedback;
-        static = muslPkgs.feedback;
-      };
+      packages.${system}.default = pkgs.feedback;
       checks.${system} = {
         release = self.packages.${system}.default;
-        static = self.packages.${system}.static;
-        dynamic = self.packages.${system}.dynamic;
         shell = self.devShells.${system}.default;
         coverage-report = pkgs.dekking.makeCoverageReport {
           name = "test-coverage-report";

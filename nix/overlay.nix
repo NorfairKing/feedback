@@ -14,25 +14,7 @@ with final.haskell.lib;
   haskellPackages = prev.haskellPackages.override (old: {
     overrides = composeExtensions (old.overrides or (_: _: { })) (
       self: super:
-        let
-          fixGHC = pkg:
-            if final.stdenv.hostPlatform.isMusl
-            then
-              pkg.override
-                {
-                  # To make sure that executables that need template
-                  # haskell can be linked statically.
-                  enableRelocatedStaticLibs = true;
-                  enableShared = false;
-                  enableDwarf = false;
-                }
-            else pkg;
-        in
         {
-          ghc = fixGHC super.ghc;
-          buildHaskellPackages = old.buildHaskellPackages.override (oldBuildHaskellPackages: {
-            ghc = fixGHC oldBuildHaskellPackages.ghc;
-          });
           feedback = self.generateOptparseApplicativeCompletions [ "feedback" ] (
             buildFromSdist (overrideCabal (self.callPackage ../feedback { })
               (old: {
@@ -58,17 +40,7 @@ with final.haskell.lib;
                   "--ghc-options=-Wcpp-undef"
                   "--ghc-options=-Werror"
                   "--ghc-options=-optP-Wno-nonportable-include-path" # For macos
-                ] ++ optionals final.stdenv.hostPlatform.isMusl [
-                  "--ghc-option=-static"
-                  "--ghc-option=-optl=-static"
-                  # Static
-                  "--extra-lib-dirs=${final.gmp6.override { withStatic = true; }}/lib"
-                  "--extra-lib-dirs=${final.libffi.overrideAttrs (old: { dontDisableStatic = true; })}/lib"
-                  # for -ltinfo
-                  "--extra-lib-dirs=${(final.ncurses.override { enableStatic = true; })}/lib"
                 ];
-                enableSharedExecutables = !final.stdenv.hostPlatform.isMusl;
-                enableSharedLibraries = !final.stdenv.hostPlatform.isMusl;
               })));
           feedback-test-harness = buildStrictly
             (overrideCabal (self.callPackage ../feedback-test-harness { }) (old: {
