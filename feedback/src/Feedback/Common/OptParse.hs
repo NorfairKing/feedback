@@ -56,7 +56,8 @@ combineToRunSettings RunConfiguration {..} = do
 
 data FilterSettings = FilterSettings
   { filterSettingGitignore :: !Bool,
-    filterSettingFind :: !(Maybe String)
+    filterSettingFind :: !(Maybe String),
+    filterSettingCustom :: !(Maybe String)
   }
   deriving (Show)
 
@@ -64,6 +65,7 @@ combineToFilterSettings :: FilterConfiguration -> FilterSettings
 combineToFilterSettings FilterConfiguration {..} =
   let filterSettingGitignore = fromMaybe True filterConfigGitignore
       filterSettingFind = filterConfigFind
+      filterSettingCustom = filterConfigCustom
    in FilterSettings {..}
 
 data OutputSettings = OutputSettings
@@ -225,7 +227,8 @@ makeRunConfiguration c =
 
 data FilterConfiguration = FilterConfiguration
   { filterConfigGitignore :: !(Maybe Bool),
-    filterConfigFind :: !(Maybe String)
+    filterConfigFind :: !(Maybe String),
+    filterConfigCustom :: !(Maybe String)
   }
   deriving (Eq)
 
@@ -250,12 +253,15 @@ filterConfigurationObjectCodec =
       .= filterConfigGitignore
     <*> optionalField "find" "arguments for the 'find' command to find files to be notified about"
       .= filterConfigFind
+    <*> optionalField "custom" "custom command and it's arguments"
+      .= filterConfigCustom
 
 emptyFilterConfiguration :: FilterConfiguration
 emptyFilterConfiguration =
   FilterConfiguration
     { filterConfigGitignore = Nothing,
-      filterConfigFind = Nothing
+      filterConfigFind = Nothing,
+      filterConfigCustom = Nothing
     }
 
 data OutputConfiguration = OutputConfiguration

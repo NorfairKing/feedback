@@ -66,6 +66,7 @@ mkCombinedFilter here filterSettings =
     <$> sequence
       [ mkGitFilter here filterSettings,
         mkFindFilter here filterSettings,
+        mkCustomFilter here filterSettings,
         pure $ standardFilter here
       ]
 
@@ -114,6 +115,21 @@ filesFromFindArgs here args = do
   case ec of
     ExitFailure _ -> die $ "Find failed: " <> show ec
     ExitSuccess -> pure set
+
+mkCustomFilter :: Path Abs Dir -> FilterSettings -> IO Filter
+mkCustomFilter here FilterSettings {..} = case filterSettingCustom of
+  Nothing -> pure mempty
+  Just customCommand -> fileSetFilter <$> filesFromCustomCommand here customCommand
+
+filesFromCustomCommand :: Path Abs Dir -> String -> IO (Set (Path Abs File))
+filesFromCustomCommand here customCommand = do
+  let processConfig = setStdout createPipe $ shell customCommand
+  (ec, out) <- readProcessStdout processConfig
+  set <- bytesFileSet here out
+  case ec of
+    ExitFailure _ -> die $ "Custom command failed: " <> show ec
+    ExitSuccess -> pure set
+
 
 bytesFileSet :: Path Abs Dir -> LB.ByteString -> IO (Set (Path Abs File))
 bytesFileSet here lb =
