@@ -12,7 +12,6 @@ import Path
 import Path.IO
 import System.IO (hPutChar)
 import System.Posix (fdToHandle, openPseudoTerminal, sigKILL, signalProcess)
-import System.Process (getPid)
 import System.Process.Typed
 import Test.Syd
 import UnliftIO
@@ -279,7 +278,7 @@ withProcessKill cp func = withProcessWait cp $ \ph -> do
 
 killProcessHandle :: Process stdin stdout stderr -> IO ()
 killProcessHandle ph = do
-  mPid <- getPid (unsafeProcessHandle ph)
+  mPid <- getPid ph
   mapM_ (signalProcess sigKILL) mPid
 
 -- It's really annoying that this is necessary, but hear me out.
