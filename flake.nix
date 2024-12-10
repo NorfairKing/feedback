@@ -42,7 +42,7 @@
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          self.overlays.${system}
+          self.overlays.default
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
@@ -56,7 +56,7 @@
 
     in
     {
-      overlays.${system} = import ./nix/overlay.nix;
+      overlays.default = import ./nix/overlay.nix;
       packages.${system}.default = pkgs.feedback;
       checks.${system} = {
         release = self.packages.${system}.default;
@@ -95,7 +95,7 @@
           zlib
           cabal-install
         ] ++ self.checks.${system}.pre-commit.enabledPackages;
-        shellHook = self.checks.${system}.pre-commit.shellHook;
+        inherit (self.checks.${system}.pre-commit) shellHook;
       };
       nix-ci.cachix = {
         name = "feedback";
