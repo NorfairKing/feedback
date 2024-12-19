@@ -42,7 +42,7 @@
         inherit system;
         config.allowUnfree = true;
         overlays = [
-          self.overlays.${system}
+          (import ./nix/overlay.nix)
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
@@ -56,7 +56,6 @@
 
     in
     {
-      overlays.${system} = import ./nix/overlay.nix;
       packages.${system}.default = pkgs.feedback;
       checks.${system} = {
         release = self.packages.${system}.default;
@@ -87,7 +86,7 @@
         name = "feedback-shell";
         packages = p: [
           p.feedback
-          # p.feedback-test-harness
+          p.feedback-test-harness
         ];
         withHoogle = true;
         doBenchmark = true;
