@@ -20,6 +20,8 @@
     fast-myers-diff.flake = false;
     sydtest.url = "github:NorfairKing/sydtest";
     sydtest.flake = false;
+    opt-env-conf.url = "github:NorfairKing/opt-env-conf";
+    opt-env-conf.flake = false;
     dekking.url = "github:NorfairKing/dekking";
     dekking.flake = false;
   };
@@ -31,8 +33,9 @@
     , weeder-nix
     , validity
     , safe-coloured-text
-    , sydtest
     , fast-myers-diff
+    , sydtest
+    , opt-env-conf
     , autodocodec
     , dekking
     }:
@@ -46,6 +49,7 @@
           (import (autodocodec + "/nix/overlay.nix"))
           (import (safe-coloured-text + "/nix/overlay.nix"))
           (import (sydtest + "/nix/overlay.nix"))
+          (import (opt-env-conf + "/nix/overlay.nix"))
           (import (fast-myers-diff + "/nix/overlay.nix"))
           (import (validity + "/nix/overlay.nix"))
           (import (dekking + "/nix/overlay.nix"))
