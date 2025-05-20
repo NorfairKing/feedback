@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0.0] - 2025-05-20
+
+### Changed
+
+* Sped up the directory watching on startup by listing only the relevant
+  directories where possible.
+* Fixed that `git`-based filtering would break if the files were named such
+  that `git ls-files` would quote paths.
+
 ## [0.1.0.5] - 2024-04-15
 
 ### Changed

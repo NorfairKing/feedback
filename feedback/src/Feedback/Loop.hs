@@ -150,18 +150,7 @@ startWatching here stdinFilter terminalCapabilities loopBegin LoopSettings {..} 
 
   -- Set up the fsnotify watchers based on that filter
   sendOutput OutputWatching
-  let descendHandler :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO (WalkAction Abs)
-      descendHandler dir subdirs _ =
-        -- Don't descent into hidden directories
-        pure $ WalkExclude $ filter (isHiddenIn dir) subdirs
-      outputWriter :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> IO StopListening
-      outputWriter dir _ _ =
-        if filterDirFilter f dir
-          then do
-            let eventFilter fsEvent = maybe False (filterFileFilter f) $ parseAbsFile (eventPath fsEvent)
-            watchDirChan watchManager (fromAbsDir dir) eventFilter eventChan
-          else pure (pure ())
-  walkDirAccum (Just descendHandler) outputWriter here
+  watchBasedOnFilter here watchManager eventChan f
 
 #ifdef MIN_VERSION_safe_coloured_text_terminfo
 getTermCaps :: IO TerminalCapabilities
