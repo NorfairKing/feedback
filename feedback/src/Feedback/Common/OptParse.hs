@@ -365,7 +365,7 @@ flagsParser =
       "Version: " <> showVersion version
     footerStr =
       unlines
-        [ Env.helpDoc environmentParser,
+        [ Env.helpDoc 80 environmentParser,
           "",
           "Configuration file format:",
           T.unpack (renderColouredSchemaViaCodec @Configuration)

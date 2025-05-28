@@ -50,9 +50,6 @@ with final.haskell.lib;
               testToolDepends = (old.testToolDepends or [ ]) ++ [
                 final.feedback
               ];
-              # Ugly hack because we can't just add flags to the 'test' invocation.
-              # Show test output as we go, instead of all at once afterwards.
-              testTarget = (old.testTarget or "") + " --show-details=direct --test-options=--debug";
             }));
         }
     );
