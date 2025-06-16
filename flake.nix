@@ -37,8 +37,11 @@
     , dekking
     }:
     let
-      system = "x86_64-linux";
-      pkgsFor = nixpkgs: import nixpkgs {
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
+
+      nixpkgsFor = forAllSystems (system: import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
@@ -51,21 +54,22 @@
           (import (dekking + "/nix/overlay.nix"))
           (import (weeder-nix + "/nix/overlay.nix"))
         ];
-      };
-      pkgs = pkgsFor nixpkgs;
+      });
 
     in
     {
-      packages.${system}.default = pkgs.feedback;
-      checks.${system} = {
+      packages = forAllSystems (system: {
+        default = nixpkgsFor.${system}.feedback;
+      });
+      checks = forAllSystems (system: {
         release = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
-        coverage-report = pkgs.dekking.makeCoverageReport {
+        coverage-report = nixpkgsFor.${system}.dekking.makeCoverageReport {
           name = "test-coverage-report";
           coverables = [ "feedback" ];
           coverage = [ "feedback-test-harness" ];
         };
-        weeder-check = pkgs.weeder-nix.makeWeederCheck {
+        weeder-check = nixpkgsFor.${system}.weeder-nix.makeWeederCheck {
           weederToml = ./weeder.toml;
           packages = [ "feedback" "feedback-test-harness" ];
         };
@@ -81,21 +85,23 @@
             tagref.enable = true;
           };
         };
-      };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
-        name = "feedback-shell";
-        packages = p: [
-          p.feedback
-          p.feedback-test-harness
-        ];
-        withHoogle = true;
-        doBenchmark = true;
-        buildInputs = with pkgs; [
-          zlib
-          cabal-install
-        ] ++ self.checks.${system}.pre-commit.enabledPackages;
-        shellHook = self.checks.${system}.pre-commit.shellHook;
-      };
+      });
+      devShells = forAllSystems (system: {
+        default = nixpkgsFor.${system}.haskellPackages.shellFor {
+          name = "feedback-shell";
+          packages = p: [
+            p.feedback
+            p.feedback-test-harness
+          ];
+          withHoogle = true;
+          doBenchmark = true;
+          buildInputs = with nixpkgsFor.${system}; [
+            zlib
+            cabal-install
+          ] ++ self.checks.${system}.pre-commit.enabledPackages;
+          shellHook = self.checks.${system}.pre-commit.shellHook;
+        };
+      });
       nix-ci.cachix = {
         name = "feedback";
         public-key = "feedback.cachix.org-1:8PNDEJ4GTCbsFUwxVWE/ulyoBMDqqL23JA44yB0j1jI=";
