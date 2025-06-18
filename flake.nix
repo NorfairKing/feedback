@@ -38,7 +38,8 @@
     }:
     let
       system = "x86_64-linux";
-      pkgsFor = nixpkgs: import nixpkgs {
+      aarch64-linux = "aarch64-linux";
+      pkgsFor = system: import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [
@@ -52,11 +53,13 @@
           (import (weeder-nix + "/nix/overlay.nix"))
         ];
       };
-      pkgs = pkgsFor nixpkgs;
+      pkgs = pkgsFor system;
+      aarch64Pkgs = pkgsFor aarch64-linux;
 
     in
     {
       packages.${system}.default = pkgs.feedback;
+      packages.${aarch64-linux}.default = aarch64Pkgs.feedback;
       checks.${system} = {
         release = self.packages.${system}.default;
         shell = self.devShells.${system}.default;
