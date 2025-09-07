@@ -391,7 +391,7 @@ parseFlags =
           ( mconcat
               [ short 'c',
                 long "config-file",
-                help "Path to an altenative config file",
+                help "Path to an alternative config file",
                 metavar "FILEPATH"
               ]
           )
