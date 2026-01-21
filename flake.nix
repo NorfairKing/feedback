@@ -35,69 +35,106 @@
     , fast-myers-diff
     , autodocodec
     , dekking
+    ,
     }:
     let
-      system = "x86_64-linux";
-      aarch64-linux = "aarch64-linux";
-      pkgsFor = system: import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-        overlays = [
-          (import ./nix/overlay.nix)
-          (import (autodocodec + "/nix/overlay.nix"))
-          (import (safe-coloured-text + "/nix/overlay.nix"))
-          (import (sydtest + "/nix/overlay.nix"))
-          (import (fast-myers-diff + "/nix/overlay.nix"))
-          (import (validity + "/nix/overlay.nix"))
-          (import (dekking + "/nix/overlay.nix"))
-          (import (weeder-nix + "/nix/overlay.nix"))
-        ];
-      };
-      pkgs = pkgsFor system;
-      aarch64Pkgs = pkgsFor aarch64-linux;
-
+      forEachSystem =
+        { systems ? [
+            "x86_64-linux"
+            "x86_64-darwin"
+            "aarch64-linux"
+          ]
+        , do
+        ,
+        }:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          let
+            pkgsFor = nixpkgs:
+              import nixpkgs {
+                inherit system;
+                config.allowUnfree = true;
+                overlays = [
+                  (import ./nix/overlay.nix)
+                  (import (autodocodec + "/nix/overlay.nix"))
+                  (import (safe-coloured-text + "/nix/overlay.nix"))
+                  (import (sydtest + "/nix/overlay.nix"))
+                  (import (fast-myers-diff + "/nix/overlay.nix"))
+                  (import (validity + "/nix/overlay.nix"))
+                  (import (dekking + "/nix/overlay.nix"))
+                  (import (weeder-nix + "/nix/overlay.nix"))
+                ];
+              };
+          in
+          do {
+            pkgs = pkgsFor nixpkgs;
+            inherit system;
+          }
+        );
     in
     {
-      packages.${system}.default = pkgs.feedback;
-      packages.${aarch64-linux}.default = aarch64Pkgs.feedback;
-      checks.${system} = {
-        release = self.packages.${system}.default;
-        shell = self.devShells.${system}.default;
-        coverage-report = pkgs.dekking.makeCoverageReport {
-          name = "test-coverage-report";
-          coverables = [ "feedback" ];
-          coverage = [ "feedback-test-harness" ];
-        };
-        weeder-check = pkgs.weeder-nix.makeWeederCheck {
-          weederToml = ./weeder.toml;
-          packages = [ "feedback" "feedback-test-harness" ];
-        };
-        pre-commit = pre-commit-hooks.lib.${system}.run {
-          src = ./.;
-          hooks = {
-            hlint.enable = true;
-            hpack.enable = true;
-            ormolu.enable = true;
-            nixpkgs-fmt.enable = true;
-            nixpkgs-fmt.excludes = [ ".*/default.nix" ];
-            cabal2nix.enable = true;
-            tagref.enable = true;
-          };
+      packages = forEachSystem {
+        do = { pkgs, ... }: {
+          default = pkgs.feedback;
         };
       };
-      devShells.${system}.default = pkgs.haskellPackages.shellFor {
-        name = "feedback-shell";
-        packages = p: [
-          p.feedback
-          p.feedback-test-harness
-        ];
-        withHoogle = true;
-        doBenchmark = true;
-        buildInputs = with pkgs; [
-          zlib
-          cabal-install
-        ] ++ self.checks.${system}.pre-commit.enabledPackages;
-        shellHook = self.checks.${system}.pre-commit.shellHook;
+      checks = forEachSystem {
+        do =
+          { system
+          , pkgs
+          , ...
+          }: {
+            release = self.packages.${system}.default;
+            shell = self.devShells.${system}.default;
+            coverage-report = pkgs.dekking.makeCoverageReport {
+              name = "test-coverage-report";
+              coverables = [ "feedback" ];
+              coverage = [ "feedback-test-harness" ];
+            };
+            weeder-check = pkgs.weeder-nix.makeWeederCheck {
+              weederToml = ./weeder.toml;
+              packages = [
+                "feedback"
+                "feedback-test-harness"
+              ];
+            };
+            pre-commit = pre-commit-hooks.lib.${system}.run {
+              src = ./.;
+              hooks = {
+                hlint.enable = true;
+                hpack.enable = true;
+                ormolu.enable = true;
+                nixpkgs-fmt.enable = true;
+                nixpkgs-fmt.excludes = [ ".*/default.nix" ];
+                cabal2nix.enable = true;
+                tagref.enable = true;
+              };
+            };
+          };
+      };
+      devShells = forEachSystem {
+        do =
+          { pkgs
+          , system
+          , ...
+          }: {
+            default = pkgs.haskellPackages.shellFor {
+              name = "feedback-shell";
+              packages = p: [
+                p.feedback
+                p.feedback-test-harness
+              ];
+              withHoogle = true;
+              doBenchmark = true;
+              buildInputs = with pkgs;
+                [
+                  zlib
+                  cabal-install
+                ]
+                ++ self.checks.${system}.pre-commit.enabledPackages;
+              shellHook = self.checks.${system}.pre-commit.shellHook;
+            };
+          };
       };
       nix-ci.cachix = {
         name = "feedback";

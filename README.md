@@ -120,3 +120,11 @@ Add this to your system flake:
    ```
 
 5. Make a PR to `development`.
+
+
+## Supported Systems (nix)
+
+Currently, `feedback` is only actively developed and supported with nix
+on `x86_64-linux`. Bindings for `aarch64-linux`, `aarch64-darwin`, and
+`x86_64-darwin` are provided without guarantees.
+
