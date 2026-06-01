@@ -1,5 +1,7 @@
 # Feedback loop
 
+[![NixCI](https://staging.nix-ci.com/badge/gh:NorfairKing:feedback)](https://staging.nix-ci.com/gh:NorfairKing:feedback)
+
 A general purpose tool to set up good feedback loops and share them with your team.
 
 ## Features
